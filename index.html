@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -361,19 +362,38 @@ Fais une recherche web sur cette propriété. Consulte :
 3. Historique transactions (sources publiques, Centris, JLR)
 4. Toute autre information pertinente
 
-Réponds UNIQUEMENT en JSON valide, sans markdown :
+Réponds UNIQUEMENT en JSON valide, sans markdown ni texte autour. Ta réponse doit commencer par le caractère { et rien d'autre — aucune phrase d'introduction, aucun avertissement, aucune note avant ou après le JSON :
 {"municipal":{"valeurFonciere":"425 000 $","valeurTerrain":"120 000 $","valeurBatiment":"305 000 $","taxes":"4 200 $/an","superficie":"120 m²","anneeConstruction":"1962","typePropriete":"Maison unifamiliale","matricule":"1234-56-7890","source":"Évaluation Montréal 2024","fiabilite":"haute"},"zonage":{"codeZone":"R-2","description":"Résidentiel faible densité","usagesPermis":["Habitation unifamiliale","Bifamiliale"],"restrictions":["Hauteur max 9m","Marge avant 5m"],"potentielDeveloppement":"Faible — zone protégée","source":"Règlement d'urbanisme","fiabilite":"haute"},"transactions":[{"date":"2018-06-15","prix":"385 000 $","type":"Vente"},{"date":"2005-03-22","prix":"210 000 $","type":"Vente"}],"proprietaire":{"nom":"Non disponible publiquement","depuis":"2018"},"analyse":{"scoreOpportunite":72,"niveauScore":"med","resume":"2-3 phrases sur l'opportunité pour un investisseur.","flags":[{"type":"positif","texte":"Valeur sous le marché"},{"type":"attention","texte":"Aucune transaction depuis 6 ans"},{"type":"risque","texte":"Zone inondable à vérifier"}]},"liens":{"evaluationFonciere":"https://evaluation.montreal.ca","registreFoncier":"https://registrefoncier.gouv.qc.ca","zonage":"https://ville.montreal.qc.ca"}}`;
   console.log('[ImmoScan] Sending request to Claude API for:', address);
   const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
   const data=await resp.json();
   console.log('[ImmoScan] Claude raw response:', data);
   if(!resp.ok){console.error('[ImmoScan] API error:', data);throw new Error(data.error?.message||'Erreur API Claude')}
-  const tb=data.content?.find(b=>b.type==='text');
-  if(!tb){console.error('[ImmoScan] No text block in response. Content:', data.content);throw new Error('Réponse vide')}
-  console.log('[ImmoScan] Text response from Claude:', tb.text);
-  const cleaned=tb.text.replace(/```json|```/g,'').trim();
-  try{return JSON.parse(cleaned)}
-  catch(e){console.error('[ImmoScan] JSON parse failed. Cleaned text:', cleaned);throw new Error('Claude a répondu en texte au lieu de JSON')}
+  // Combine ALL text blocks (web_search produces multiple), then extract the JSON object
+  const allText=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+  if(!allText){console.error('[ImmoScan] No text in response. Content:', data.content);throw new Error('Réponse vide')}
+  console.log('[ImmoScan] Text response from Claude:', allText);
+  const parsed=extractJson(allText);
+  if(!parsed){console.error('[ImmoScan] Could not extract JSON from:', allText);throw new Error('Claude n\'a pas retourné de JSON exploitable')}
+  return parsed;
+}
+
+// Robustly pull a JSON object out of text that may have prose before/after it
+function extractJson(text){
+  // Try fenced code block first
+  let m=text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if(m){try{return JSON.parse(m[1].trim())}catch(e){}}
+  // Otherwise find the first { and match to its closing brace
+  const start=text.indexOf('{');
+  if(start<0)return null;
+  let depth=0,inStr=false,prev='';
+  for(let i=start;i<text.length;i++){
+    const ch=text[i];
+    if(inStr){if(ch==='"'&&prev!=='\\')inStr=false}
+    else{if(ch==='"')inStr=true;else if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0){const cand=text.slice(start,i+1);try{return JSON.parse(cand)}catch(e){return null}}}}
+    prev=ch;
+  }
+  return null;
 }
 
 // RENDER REPORT
@@ -485,10 +505,26 @@ Réponds UNIQUEMENT en JSON valide (tableau, peut être []) :
   const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
   const data=await resp.json();
   if(!resp.ok)throw new Error(data.error?.message||'Erreur API');
-  const tb=data.content?.find(b=>b.type==='text');
-  if(!tb)return[];
-  const arr=JSON.parse(tb.text.replace(/```json|```/g,'').trim());
+  const allText=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+  if(!allText)return[];
+  const arr=extractJsonArray(allText);
   return Array.isArray(arr)?arr:[];
+}
+
+// Extract a JSON array from text that may contain prose
+function extractJsonArray(text){
+  let m=text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if(m){try{const p=JSON.parse(m[1].trim());if(Array.isArray(p))return p}catch(e){}}
+  const start=text.indexOf('[');
+  if(start<0)return[];
+  let depth=0,inStr=false,prev='';
+  for(let i=start;i<text.length;i++){
+    const ch=text[i];
+    if(inStr){if(ch==='"'&&prev!=='\\')inStr=false}
+    else{if(ch==='"')inStr=true;else if(ch==='[')depth++;else if(ch===']'){depth--;if(depth===0){try{return JSON.parse(text.slice(start,i+1))}catch(e){return[]}}}}
+    prev=ch;
+  }
+  return[];
 }
 
 // INIT
