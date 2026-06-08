@@ -145,6 +145,57 @@
     .src-kj{background:rgba(52,211,153,.1);color:var(--green)}
     .open-link{font-size:11px;color:var(--accent);font-weight:600;text-decoration:none}
     .no-alerts{text-align:center;padding:32px 20px;color:var(--muted);font-size:13px;line-height:1.6}
+    /* Capture tab */
+    .capture-wrap{display:flex;flex-direction:column;align-items:center;padding-top:28px;gap:18px}
+    .capture-title{text-align:center}
+    .capture-title h2{font-family:'Syne',sans-serif;font-size:21px;font-weight:700}
+    .capture-title p{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5;max-width:280px}
+    .big-capture{width:200px;height:200px;border-radius:50%;border:none;cursor:pointer;background:radial-gradient(circle at 30% 30%,#3b82f6,#1e40af);color:#fff;font-family:'Syne',sans-serif;font-weight:800;font-size:19px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 40px rgba(59,130,246,.4);transition:.15s;-webkit-tap-highlight-color:transparent}
+    .big-capture:active{transform:scale(.95);box-shadow:0 6px 24px rgba(59,130,246,.5)}
+    .big-capture .bc-ico{font-size:46px}
+    .big-capture.busy{background:radial-gradient(circle at 30% 30%,#475569,#1e293b);pointer-events:none}
+    .big-capture.busy .bc-ico{animation:spin 1s linear infinite}
+    .capture-actions{display:flex;gap:10px;width:100%;max-width:320px}
+    .cap-secondary{flex:1;padding:13px;border-radius:12px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:'Epilogue',sans-serif;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:.15s}
+    .cap-secondary:active{background:var(--s2)}
+    .cap-secondary.recording{border-color:var(--red);color:var(--red);animation:pulse 1.2s ease infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    .cap-status{font-size:12px;color:var(--sky);text-align:center;min-height:18px;font-weight:500}
+    .cap-manual{width:100%;max-width:320px;margin-top:4px}
+    .cap-manual-toggle{font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:'Epilogue',sans-serif}
+    .cap-manual-row{display:flex;gap:8px;margin-top:10px}
+    .cap-manual-row input{flex:1;background:var(--s1);border:1px solid var(--border);border-radius:9px;color:var(--text);font-family:'Epilogue',sans-serif;font-size:13px;padding:11px 12px;outline:none}
+    .cap-manual-row input:focus{border-color:var(--accent)}
+    .cap-manual-row button{padding:0 16px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-family:'Epilogue',sans-serif}
+    /* Prospect list */
+    .prosp-wrap{display:flex;flex-direction:column;gap:10px;padding-top:14px}
+    .prosp-filter{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+    .pf-chip{flex-shrink:0;font-size:11px;font-weight:600;padding:6px 13px;border-radius:20px;border:1px solid var(--border);background:var(--s1);color:var(--muted);cursor:pointer;font-family:'Epilogue',sans-serif;white-space:nowrap}
+    .pf-chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .prosp-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+    .prosp-top{display:flex;gap:12px;padding:13px 15px}
+    .prosp-thumb{width:54px;height:54px;border-radius:10px;background:var(--s2);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px}
+    .prosp-thumb img{width:100%;height:100%;object-fit:cover}
+    .prosp-info{flex:1;min-width:0}
+    .prosp-addr{font-size:13px;font-weight:600;line-height:1.3}
+    .prosp-meta{font-size:11px;color:var(--muted);margin-top:3px}
+    .prosp-note{font-size:11px;color:var(--sky);font-style:italic;margin-top:4px}
+    .prosp-status-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;align-self:flex-start;flex-shrink:0}
+    .ps-todo{background:rgba(251,191,36,.15);color:var(--gold)}
+    .ps-progress{background:rgba(59,130,246,.15);color:var(--sky)}
+    .ps-done{background:rgba(52,211,153,.15);color:var(--green)}
+    .ps-skip{background:rgba(100,116,139,.15);color:var(--muted)}
+    .prosp-checklist{display:flex;gap:0;border-top:1px solid var(--border)}
+    .pc-item{flex:1;padding:9px 6px;text-align:center;font-size:10px;color:var(--muted);text-decoration:none;border-right:1px solid var(--border);transition:.15s;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:'Epilogue',sans-serif;background:none;border-top:none;border-bottom:none;border-left:none}
+    .pc-item:last-child{border-right:none}
+    .pc-item:active{background:var(--s2)}
+    .pc-item .pc-ico{font-size:16px}
+    .pc-item.checked{color:var(--green)}
+    .prosp-statusrow{display:flex;gap:0;border-top:1px solid var(--border)}
+    .psr-btn{flex:1;padding:8px;font-size:10px;font-weight:600;background:none;border:none;border-right:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:'Epilogue',sans-serif}
+    .psr-btn:last-child{border-right:none}
+    .psr-btn.active{color:var(--sky)}
+    .prosp-empty{text-align:center;padding:48px 24px;color:var(--muted);font-size:13px;line-height:1.6}
     nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(8,12,20,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;z-index:50;padding-bottom:env(safe-area-inset-bottom)}
     .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;cursor:pointer;color:var(--muted);font-size:10px;font-weight:500;letter-spacing:.3px;border:none;background:none;font-family:'Epilogue',sans-serif;transition:.15s}
     .nav-btn.active{color:var(--sky)}
@@ -181,7 +232,7 @@
       <div class="wordmark">ImmoScan</div>
       <div class="icon-btn" id="settingsBtn">⚙️</div>
     </div>
-    <div class="sbar" id="sbar">
+    <div class="sbar hidden" id="sbar">
       <span class="sbar-icon">🔍</span>
       <input type="text" id="addrInput" placeholder="Entrer une adresse…" autocomplete="off"/>
       <span class="xclear" id="xclear">✕</span>
@@ -190,11 +241,50 @@
   </header>
 
   <div class="main" id="main">
-    <div id="scanContent">
+    <div id="captureContent">
+      <div class="capture-wrap">
+        <div class="capture-title">
+          <h2>Spotté une propriété ?</h2>
+          <p>Appuie une fois. Ta position est captée, l'adresse se reconstitue toute seule.</p>
+        </div>
+        <button class="big-capture" id="bigCapture">
+          <span class="bc-ico">📍</span>
+          <span id="bigCaptureLabel">Capturer ici</span>
+        </button>
+        <div class="cap-status" id="capStatus"></div>
+        <div class="capture-actions">
+          <button class="cap-secondary" id="voiceBtn">🎤 Note vocale</button>
+          <button class="cap-secondary" id="photoBtn">📷 Photo</button>
+          <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none"/>
+        </div>
+        <div class="cap-manual">
+          <button class="cap-manual-toggle" id="manualToggle">Pas sur place ? Entrer une adresse manuellement</button>
+          <div class="cap-manual-row hidden" id="manualRow">
+            <input type="text" id="manualAddr" placeholder="123 rue Exemple, Montréal" autocomplete="off"/>
+            <button id="manualAdd">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="prospContent" class="hidden">
+      <div class="prosp-wrap">
+        <div class="prosp-filter" id="prospFilter">
+          <button class="pf-chip active" data-filter="all">Toutes</button>
+          <button class="pf-chip" data-filter="todo">À vérifier</button>
+          <button class="pf-chip" data-filter="progress">En cours</button>
+          <button class="pf-chip" data-filter="done">Complétées</button>
+          <button class="pf-chip" data-filter="skip">Écartées</button>
+        </div>
+        <div id="prospList"></div>
+      </div>
+    </div>
+
+    <div id="scanContent" class="hidden">
       <div class="empty" id="emptyState">
         <div class="empty-ico">🏚️</div>
-        <h2>Propriété en détresse ?</h2>
-        <p>Entre une adresse pour obtenir le rôle foncier, zonage, historique et une analyse complète.</p>
+        <h2>Recherche par adresse</h2>
+        <p>Entre une adresse pour obtenir le rôle foncier, zonage, historique et une analyse Claude.</p>
         <div id="configWarn" class="config-warn hidden">⚙️ Configure ta clé Anthropic dans les réglages</div>
       </div>
       <div class="loading" id="loadingState">
@@ -214,9 +304,11 @@
   </div>
 
   <nav>
-    <button class="nav-btn active" id="navScan" data-tab="scan"><span class="nav-ico">🔍</span>Scan</button>
+    <button class="nav-btn active" id="navCapture" data-tab="capture"><span class="nav-ico">📍</span>Capture</button>
+    <button class="nav-btn" id="navProsp" data-tab="prosp"><span class="nav-ico">📋</span>Liste</button>
+    <button class="nav-btn" id="navScan" data-tab="scan"><span class="nav-ico">🔍</span>Recherche</button>
     <button class="nav-btn" id="navAlerts" data-tab="alerts"><span class="nav-ico">🔔</span>Alertes</button>
-    <button class="nav-btn" id="navHist" data-tab="history"><span class="nav-ico">🕐</span>Historique</button>
+    <button class="nav-btn" id="navHist" data-tab="history"><span class="nav-ico">🕐</span>Analyses</button>
   </nav>
 </div>
 
@@ -247,6 +339,10 @@ const hist=()=>{try{return JSON.parse(localStorage.getItem('imsc_hist')||'[]')}c
 const saveHist=a=>localStorage.setItem('imsc_hist',JSON.stringify(a.slice(0,100)));
 const alerts=()=>{try{return JSON.parse(localStorage.getItem('imsc_alerts')||'[]')}catch{return[]}};
 const saveAlerts=a=>localStorage.setItem('imsc_alerts',JSON.stringify(a.slice(0,50)));
+const prosp=()=>{try{return JSON.parse(localStorage.getItem('imsc_prosp')||'[]')}catch{return[]}};
+const saveProsp=a=>localStorage.setItem('imsc_prosp',JSON.stringify(a.slice(0,300)));
+function addProsp(entry){const p=prosp();p.unshift(entry);saveProsp(p)}
+function updateProsp(id,changes){const p=prosp();const i=p.findIndex(x=>x.id===id);if(i>=0){p[i]={...p[i],...changes};saveProsp(p)}}
 function upsertHist(e){const h=hist(),i=h.findIndex(x=>x.address===e.address);if(i>=0)h.splice(i,1);h.unshift(e);saveHist(h)}
 const $=id=>document.getElementById(id);
 const esc=s=>(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -255,17 +351,20 @@ const fmt$=v=>v?Number(v).toLocaleString('fr-CA')+' $':'N/D';
 function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
 
 // TABS
-let currentTab='scan',currentReport=null;
+let currentTab='capture',currentReport=null,prospFilter='all';
 document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
 function switchTab(tab){
   currentTab=tab;
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  $('captureContent').classList.toggle('hidden',tab!=='capture');
+  $('prospContent').classList.toggle('hidden',tab!=='prosp');
   $('scanContent').classList.toggle('hidden',tab!=='scan');
   $('histContent').classList.toggle('hidden',tab!=='history');
   $('alertsContent').classList.toggle('hidden',tab!=='alerts');
   $('sbar').classList.toggle('hidden',tab!=='scan');
   if(tab==='history')renderHistory();
   if(tab==='alerts')renderAlerts();
+  if(tab==='prosp')renderProsp();
 }
 
 // SETTINGS
@@ -525,6 +624,157 @@ function extractJsonArray(text){
     prev=ch;
   }
   return[];
+}
+
+// ═══════════════ CAPTURE ═══════════════
+function uid(){return 'p'+Date.now()+Math.random().toString(36).slice(2,6)}
+
+async function reverseGeocode(lat,lng){
+  const key=cfg().google||GOOGLE_KEY;
+  const url=`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}&language=fr`;
+  const r=await fetch(url);
+  const d=await r.json();
+  if(d.status==='OK'&&d.results&&d.results[0])return d.results[0].formatted_address;
+  return null;
+}
+
+$('bigCapture').addEventListener('click',()=>{
+  if(!navigator.geolocation){showToast('⚠️ GPS non disponible sur cet appareil');return}
+  const btn=$('bigCapture'),lbl=$('bigCaptureLabel'),ico=btn.querySelector('.bc-ico');
+  btn.classList.add('busy');ico.textContent='⏳';lbl.textContent='Localisation…';
+  $('capStatus').textContent='Récupération de ta position GPS…';
+
+  navigator.geolocation.getCurrentPosition(async(pos)=>{
+    const lat=pos.coords.latitude,lng=pos.coords.longitude;
+    $('capStatus').textContent='Position captée. Reconstitution de l\'adresse…';
+    let address=null;
+    try{address=await reverseGeocode(lat,lng)}catch(e){}
+    const entry={id:uid(),lat,lng,address:address||`(${lat.toFixed(5)}, ${lng.toFixed(5)})`,addressResolved:!!address,date:new Date().toISOString(),status:'todo',note:'',photo:null,checks:{evalweb:false,registre:false,zonage:false}};
+    addProsp(entry);
+    btn.classList.remove('busy');ico.textContent='✅';lbl.textContent='Capturé !';
+    $('capStatus').textContent=address?`✓ ${address}`:'✓ Position enregistrée (adresse à confirmer)';
+    setTimeout(()=>{ico.textContent='📍';lbl.textContent='Capturer ici';$('capStatus').textContent=''},3500);
+  },(err)=>{
+    btn.classList.remove('busy');ico.textContent='📍';lbl.textContent='Capturer ici';
+    $('capStatus').textContent='';
+    showToast(err.code===1?'⚠️ Autorise la géolocalisation':'⚠️ Position introuvable');
+  },{enableHighAccuracy:true,timeout:10000,maximumAge:0});
+});
+
+// Voice note (Web Speech API)
+let recognition=null,recording=false;
+$('voiceBtn').addEventListener('click',()=>{
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){showToast('⚠️ Dictée non supportée sur ce navigateur');return}
+  if(recording){recognition&&recognition.stop();return}
+  recognition=new SR();recognition.lang='fr-CA';recognition.interimResults=false;
+  recognition.onstart=()=>{recording=true;$('voiceBtn').classList.add('recording');$('voiceBtn').textContent='⏹ Arrêter';$('capStatus').textContent='🎤 Parle maintenant…'};
+  recognition.onresult=(e)=>{
+    const text=e.results[0][0].transcript;
+    // Attach voice note to the most recent prospect, or create a note-only entry
+    const p=prosp();
+    if(p.length>0&&(Date.now()-new Date(p[0].date).getTime()<120000)){
+      updateProsp(p[0].id,{note:(p[0].note?p[0].note+' · ':'')+text});
+      $('capStatus').textContent=`✓ Note ajoutée : "${text}"`;
+    }else{
+      addProsp({id:uid(),lat:null,lng:null,address:'(note vocale sans position)',addressResolved:false,date:new Date().toISOString(),status:'todo',note:text,photo:null,checks:{evalweb:false,registre:false,zonage:false}});
+      $('capStatus').textContent=`✓ Note vocale enregistrée : "${text}"`;
+    }
+    setTimeout(()=>{$('capStatus').textContent=''},4000);
+  };
+  recognition.onerror=()=>{$('capStatus').textContent='⚠️ Dictée interrompue'};
+  recognition.onend=()=>{recording=false;$('voiceBtn').classList.remove('recording');$('voiceBtn').textContent='🎤 Note vocale'};
+  recognition.start();
+});
+
+// Photo
+$('photoBtn').addEventListener('click',()=>$('photoInput').click());
+$('photoInput').addEventListener('change',(e)=>{
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const dataUrl=reader.result;
+    const p=prosp();
+    if(p.length>0&&(Date.now()-new Date(p[0].date).getTime()<120000)){
+      updateProsp(p[0].id,{photo:dataUrl});
+      showToast('✓ Photo ajoutée à la dernière capture');
+    }else{
+      addProsp({id:uid(),lat:null,lng:null,address:'(photo sans position)',addressResolved:false,date:new Date().toISOString(),status:'todo',note:'',photo:dataUrl,checks:{evalweb:false,registre:false,zonage:false}});
+      showToast('✓ Photo enregistrée');
+    }
+  };
+  reader.readAsDataURL(file);
+});
+
+// Manual entry
+$('manualToggle').addEventListener('click',()=>$('manualRow').classList.toggle('hidden'));
+$('manualAdd').addEventListener('click',()=>{
+  const addr=$('manualAddr').value.trim();if(!addr)return;
+  addProsp({id:uid(),lat:null,lng:null,address:addr,addressResolved:true,date:new Date().toISOString(),status:'todo',note:'',photo:null,checks:{evalweb:false,registre:false,zonage:false}});
+  $('manualAddr').value='';$('manualRow').classList.add('hidden');
+  showToast('✓ Propriété ajoutée à la liste');
+});
+
+// ═══════════════ PROSPECT LIST ═══════════════
+document.querySelectorAll('.pf-chip').forEach(c=>c.addEventListener('click',()=>{prospFilter=c.dataset.filter;document.querySelectorAll('.pf-chip').forEach(x=>x.classList.toggle('active',x===c));renderProsp()}));
+
+function renderProsp(){
+  const items=prosp().filter(p=>prospFilter==='all'||p.status===prospFilter);
+  const el=$('prospList');
+  if(items.length===0){
+    el.innerHTML='<div class="prosp-empty">Aucune propriété ici.<br>Utilise l\'onglet 📍 Capture quand tu en spots une.</div>';
+    return;
+  }
+  const stLabel={todo:'À vérifier',progress:'En cours',done:'Complétée',skip:'Écartée'};
+  const stClass={todo:'ps-todo',progress:'ps-progress',done:'ps-done',skip:'ps-skip'};
+  el.innerHTML=items.map(p=>{
+    const addr=encodeURIComponent(p.address);
+    const evalUrl='https://montreal.ca/role-evaluation-fonciere';
+    const regUrl='https://www.registrefoncier.gouv.qc.ca/Sirf/';
+    const zonUrl='https://montreal.ca/services/cartes-interactives-amenagement-du-territoire';
+    const mapUrl=p.lat?`https://www.google.com/maps?q=${p.lat},${p.lng}`:`https://www.google.com/maps?q=${addr}`;
+    const date=new Date(p.date).toLocaleDateString('fr-CA',{day:'numeric',month:'short'});
+    const thumb=p.photo?`<img src="${p.photo}" alt=""/>`:'🏚️';
+    return `<div class="prosp-card" data-id="${p.id}">
+      <div class="prosp-top">
+        <div class="prosp-thumb">${thumb}</div>
+        <div class="prosp-info">
+          <div class="prosp-addr">${esc(p.address)}</div>
+          <div class="prosp-meta">📅 ${date}${p.addressResolved?'':' · 📍 GPS'}</div>
+          ${p.note?`<div class="prosp-note">🎤 ${esc(p.note)}</div>`:''}
+        </div>
+        <span class="prosp-status-badge ${stClass[p.status]}">${stLabel[p.status]}</span>
+      </div>
+      <div class="prosp-checklist">
+        <a class="pc-item ${p.checks.evalweb?'checked':''}" href="${evalUrl}" target="_blank" data-check="evalweb"><span class="pc-ico">🏛️</span>EvalWeb${p.checks.evalweb?' ✓':''}</a>
+        <a class="pc-item ${p.checks.registre?'checked':''}" href="${regUrl}" target="_blank" data-check="registre"><span class="pc-ico">📋</span>Registre${p.checks.registre?' ✓':''}</a>
+        <a class="pc-item ${p.checks.zonage?'checked':''}" href="${zonUrl}" target="_blank" data-check="zonage"><span class="pc-ico">🗺️</span>Zonage${p.checks.zonage?' ✓':''}</a>
+        <a class="pc-item" href="${mapUrl}" target="_blank"><span class="pc-ico">📍</span>Carte</a>
+      </div>
+      <div class="prosp-statusrow">
+        <button class="psr-btn ${p.status==='todo'?'active':''}" data-status="todo">À vérifier</button>
+        <button class="psr-btn ${p.status==='progress'?'active':''}" data-status="progress">En cours</button>
+        <button class="psr-btn ${p.status==='done'?'active':''}" data-status="done">Complétée</button>
+        <button class="psr-btn ${p.status==='skip'?'active':''}" data-status="skip">Écarter</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Checklist toggles (long-press / click marks done; link still opens)
+  el.querySelectorAll('.pc-item[data-check]').forEach(a=>{
+    a.addEventListener('click',(e)=>{
+      const card=a.closest('.prosp-card');const id=card.dataset.id;const check=a.dataset.check;
+      const p=prosp().find(x=>x.id===id);if(!p)return;
+      // mark as checked after a short delay (lets the link open first)
+      setTimeout(()=>{const checks={...p.checks,[check]:true};updateProsp(id,{checks,status:p.status==='todo'?'progress':p.status});renderProsp()},800);
+    });
+  });
+  el.querySelectorAll('.psr-btn').forEach(b=>{
+    b.addEventListener('click',()=>{
+      const id=b.closest('.prosp-card').dataset.id;
+      updateProsp(id,{status:b.dataset.status});renderProsp();
+    });
+  });
 }
 
 // INIT
