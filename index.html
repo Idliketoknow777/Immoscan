@@ -196,6 +196,29 @@
     .psr-btn:last-child{border-right:none}
     .psr-btn.active{color:var(--sky)}
     .prosp-empty{text-align:center;padding:48px 24px;color:var(--muted);font-size:13px;line-height:1.6}
+    .prosp-title-row{display:flex;align-items:center;gap:6px}
+    .prosp-addr-line{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:2px}
+    .mini-edit{background:none;border:none;cursor:pointer;font-size:11px;opacity:.5;padding:2px;flex-shrink:0}
+    .mini-edit:active{opacity:1}
+    .prosp-notes{display:flex;flex-direction:column;gap:5px;padding:0 15px 11px}
+    .pnote{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--sky);background:rgba(125,211,252,.06);border-radius:7px;padding:7px 9px}
+    .pnote-ico{flex-shrink:0}
+    .pnote-txt{flex:1;font-style:italic}
+    .pnote-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px}
+    .pnote-del:active{color:var(--red)}
+    .prosp-toolrow{display:flex;gap:0;border-top:1px solid var(--border)}
+    .pt-btn{flex:1;padding:9px;font-size:11px;font-weight:600;background:none;border:none;border-right:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:'Epilogue',sans-serif;text-decoration:none;text-align:center}
+    .pt-btn:last-child{border-right:none}
+    .pt-btn:active{background:var(--s2)}
+    .pt-btn.danger{color:var(--red)}
+    .adjust-sheet{background:var(--s1);border-radius:20px 20px 0 0;border:1px solid var(--border);width:100%;max-width:480px;padding:20px 18px 36px;display:flex;flex-direction:column;gap:11px;animation:slideUp .3s ease;max-height:94dvh;overflow-y:auto}
+    .adjust-sheet h2{font-family:'Syne',sans-serif;font-size:18px;font-weight:800}
+    .adjust-hint{font-size:12px;color:var(--muted);line-height:1.5}
+    .adjust-notes-box{font-size:12px;color:var(--sky);background:var(--s2);border-radius:8px;padding:9px 11px;line-height:1.5}
+    .adjust-map{width:100%;height:320px;border-radius:12px;overflow:hidden;background:var(--s2)}
+    .adjust-addr{font-size:13px;font-weight:500;text-align:center;padding:4px}
+    .adjust-actions{display:flex;gap:10px;align-items:center}
+    .adjust-actions .pt-btn{border:1px solid var(--border);border-radius:11px;padding:14px;flex:0 0 auto;min-width:90px}
     nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(8,12,20,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;z-index:50;padding-bottom:env(safe-area-inset-bottom)}
     .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;cursor:pointer;color:var(--muted);font-size:10px;font-weight:500;letter-spacing:.3px;border:none;background:none;font-family:'Epilogue',sans-serif;transition:.15s}
     .nav-btn.active{color:var(--sky)}
@@ -253,7 +276,7 @@
         </button>
         <div class="cap-status" id="capStatus"></div>
         <div class="capture-actions">
-          <button class="cap-secondary" id="voiceBtn">🎤 Note vocale</button>
+          <button class="cap-secondary" id="voiceBtn">🎤 Ajouter note vocale</button>
           <button class="cap-secondary" id="photoBtn">📷 Photo</button>
           <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none"/>
         </div>
@@ -275,6 +298,7 @@
           <button class="pf-chip" data-filter="progress">En cours</button>
           <button class="pf-chip" data-filter="done">Complétées</button>
           <button class="pf-chip" data-filter="skip">Écartées</button>
+          <button class="pf-chip" data-filter="archived">📥 Archivées</button>
         </div>
         <div id="prospList"></div>
       </div>
@@ -329,6 +353,21 @@
   </div>
 </div>
 
+<div class="overlay" id="adjustOverlay">
+  <div class="adjust-sheet">
+    <div class="handle"></div>
+    <h2>Ajuster la position</h2>
+    <p class="adjust-hint">Déplace le point sur la vraie propriété. Utilise Street View (icône bonhomme orange) pour confirmer visuellement.</p>
+    <div class="adjust-notes-box" id="adjustNotes"></div>
+    <div id="adjustMapDiv" class="adjust-map"></div>
+    <div class="adjust-addr">📍 <span id="adjustAddrPreview">…</span></div>
+    <div class="adjust-actions">
+      <button class="pt-btn" id="adjustCancel">Annuler</button>
+      <button class="btn-save" id="adjustSave" style="flex:1;margin:0">Enregistrer la position</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -339,9 +378,18 @@ const hist=()=>{try{return JSON.parse(localStorage.getItem('imsc_hist')||'[]')}c
 const saveHist=a=>localStorage.setItem('imsc_hist',JSON.stringify(a.slice(0,100)));
 const alerts=()=>{try{return JSON.parse(localStorage.getItem('imsc_alerts')||'[]')}catch{return[]}};
 const saveAlerts=a=>localStorage.setItem('imsc_alerts',JSON.stringify(a.slice(0,50)));
-const prosp=()=>{try{return JSON.parse(localStorage.getItem('imsc_prosp')||'[]')}catch{return[]}};
+const prosp=()=>{try{const a=JSON.parse(localStorage.getItem('imsc_prosp')||'[]');return a.map(migrateProsp)}catch{return[]}};
 const saveProsp=a=>localStorage.setItem('imsc_prosp',JSON.stringify(a.slice(0,300)));
 function addProsp(entry){const p=prosp();p.unshift(entry);saveProsp(p)}
+// Backward-compat: old entries had a single `note` string; convert to `notes` array + ensure new fields
+function migrateProsp(e){
+  if(e.notes===undefined){e.notes=e.note?[e.note]:[]}
+  if(e.archived===undefined)e.archived=false;
+  if(e.title===undefined)e.title=e.address||'Propriété';
+  if(e.checks===undefined)e.checks={evalweb:false,registre:false,zonage:false};
+  return e;
+}
+function newProspEntry(o){return Object.assign({id:uid(),lat:null,lng:null,address:'',title:'',addressResolved:false,date:new Date().toISOString(),status:'todo',notes:[],photo:null,archived:false,checks:{evalweb:false,registre:false,zonage:false}},o)}
 function updateProsp(id,changes){const p=prosp();const i=p.findIndex(x=>x.id===id);if(i>=0){p[i]={...p[i],...changes};saveProsp(p)}}
 function upsertHist(e){const h=hist(),i=h.findIndex(x=>x.address===e.address);if(i>=0)h.splice(i,1);h.unshift(e);saveHist(h)}
 const $=id=>document.getElementById(id);
@@ -649,7 +697,7 @@ $('bigCapture').addEventListener('click',()=>{
     $('capStatus').textContent='Position captée. Reconstitution de l\'adresse…';
     let address=null;
     try{address=await reverseGeocode(lat,lng)}catch(e){}
-    const entry={id:uid(),lat,lng,address:address||`(${lat.toFixed(5)}, ${lng.toFixed(5)})`,addressResolved:!!address,date:new Date().toISOString(),status:'todo',note:'',photo:null,checks:{evalweb:false,registre:false,zonage:false}};
+    const entry=newProspEntry({lat,lng,address:address||`(${lat.toFixed(5)}, ${lng.toFixed(5)})`,title:address||'Nouvelle propriété',addressResolved:!!address});
     addProsp(entry);
     btn.classList.remove('busy');ico.textContent='✅';lbl.textContent='Capturé !';
     $('capStatus').textContent=address?`✓ ${address}`:'✓ Position enregistrée (adresse à confirmer)';
@@ -661,29 +709,27 @@ $('bigCapture').addEventListener('click',()=>{
   },{enableHighAccuracy:true,timeout:10000,maximumAge:0});
 });
 
-// Voice note (Web Speech API)
+// Voice note (Web Speech API) — always attaches to the LAST capture
 let recognition=null,recording=false;
 $('voiceBtn').addEventListener('click',()=>{
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){showToast('⚠️ Dictée non supportée sur ce navigateur');return}
   if(recording){recognition&&recognition.stop();return}
+  const p=prosp();
+  if(p.length===0){showToast('⚠️ Capture d\'abord une position');return}
   recognition=new SR();recognition.lang='fr-CA';recognition.interimResults=false;
   recognition.onstart=()=>{recording=true;$('voiceBtn').classList.add('recording');$('voiceBtn').textContent='⏹ Arrêter';$('capStatus').textContent='🎤 Parle maintenant…'};
   recognition.onresult=(e)=>{
     const text=e.results[0][0].transcript;
-    // Attach voice note to the most recent prospect, or create a note-only entry
-    const p=prosp();
-    if(p.length>0&&(Date.now()-new Date(p[0].date).getTime()<120000)){
-      updateProsp(p[0].id,{note:(p[0].note?p[0].note+' · ':'')+text});
-      $('capStatus').textContent=`✓ Note ajoutée : "${text}"`;
-    }else{
-      addProsp({id:uid(),lat:null,lng:null,address:'(note vocale sans position)',addressResolved:false,date:new Date().toISOString(),status:'todo',note:text,photo:null,checks:{evalweb:false,registre:false,zonage:false}});
-      $('capStatus').textContent=`✓ Note vocale enregistrée : "${text}"`;
-    }
-    setTimeout(()=>{$('capStatus').textContent=''},4000);
+    const cur=prosp();
+    const target=cur[0]; // most recent capture
+    const notes=[...(target.notes||[]),text];
+    updateProsp(target.id,{notes});
+    $('capStatus').textContent=`✓ Note ajoutée à « ${target.title||target.address} » : "${text}"`;
+    setTimeout(()=>{$('capStatus').textContent=''},4500);
   };
   recognition.onerror=()=>{$('capStatus').textContent='⚠️ Dictée interrompue'};
-  recognition.onend=()=>{recording=false;$('voiceBtn').classList.remove('recording');$('voiceBtn').textContent='🎤 Note vocale'};
+  recognition.onend=()=>{recording=false;$('voiceBtn').classList.remove('recording');$('voiceBtn').textContent='🎤 Ajouter note vocale'};
   recognition.start();
 });
 
@@ -695,13 +741,9 @@ $('photoInput').addEventListener('change',(e)=>{
   reader.onload=()=>{
     const dataUrl=reader.result;
     const p=prosp();
-    if(p.length>0&&(Date.now()-new Date(p[0].date).getTime()<120000)){
-      updateProsp(p[0].id,{photo:dataUrl});
-      showToast('✓ Photo ajoutée à la dernière capture');
-    }else{
-      addProsp({id:uid(),lat:null,lng:null,address:'(photo sans position)',addressResolved:false,date:new Date().toISOString(),status:'todo',note:'',photo:dataUrl,checks:{evalweb:false,registre:false,zonage:false}});
-      showToast('✓ Photo enregistrée');
-    }
+    if(p.length===0){showToast('⚠️ Capture d\'abord une position');return}
+    updateProsp(p[0].id,{photo:dataUrl});
+    showToast('✓ Photo ajoutée à « '+(p[0].title||p[0].address)+' »');
   };
   reader.readAsDataURL(file);
 });
@@ -710,19 +752,26 @@ $('photoInput').addEventListener('change',(e)=>{
 $('manualToggle').addEventListener('click',()=>$('manualRow').classList.toggle('hidden'));
 $('manualAdd').addEventListener('click',()=>{
   const addr=$('manualAddr').value.trim();if(!addr)return;
-  addProsp({id:uid(),lat:null,lng:null,address:addr,addressResolved:true,date:new Date().toISOString(),status:'todo',note:'',photo:null,checks:{evalweb:false,registre:false,zonage:false}});
+  addProsp(newProspEntry({address:addr,title:addr,addressResolved:true}));
   $('manualAddr').value='';$('manualRow').classList.add('hidden');
   showToast('✓ Propriété ajoutée à la liste');
 });
 
 // ═══════════════ PROSPECT LIST ═══════════════
+function deleteProsp(id){const p=prosp().filter(x=>x.id!==id);saveProsp(p)}
 document.querySelectorAll('.pf-chip').forEach(c=>c.addEventListener('click',()=>{prospFilter=c.dataset.filter;document.querySelectorAll('.pf-chip').forEach(x=>x.classList.toggle('active',x===c));renderProsp()}));
 
 function renderProsp(){
-  const items=prosp().filter(p=>prospFilter==='all'||p.status===prospFilter);
+  const all=prosp();
+  const items=all.filter(p=>{
+    if(prospFilter==='archived')return p.archived;
+    if(p.archived)return false; // archived hidden from all other views
+    return prospFilter==='all'||p.status===prospFilter;
+  });
   const el=$('prospList');
   if(items.length===0){
-    el.innerHTML='<div class="prosp-empty">Aucune propriété ici.<br>Utilise l\'onglet 📍 Capture quand tu en spots une.</div>';
+    const msg=prospFilter==='archived'?'Aucune propriété archivée.':'Aucune propriété ici.<br>Utilise l\'onglet 📍 Capture quand tu en spots une.';
+    el.innerHTML=`<div class="prosp-empty">${msg}</div>`;
     return;
   }
   const stLabel={todo:'À vérifier',progress:'En cours',done:'Complétée',skip:'Écartée'};
@@ -733,23 +782,25 @@ function renderProsp(){
     const regUrl='https://www.registrefoncier.gouv.qc.ca/Sirf/';
     const zonUrl='https://montreal.ca/services/cartes-interactives-amenagement-du-territoire';
     const mapUrl=p.lat?`https://www.google.com/maps?q=${p.lat},${p.lng}`:`https://www.google.com/maps?q=${addr}`;
-    const date=new Date(p.date).toLocaleDateString('fr-CA',{day:'numeric',month:'short'});
+    const date=new Date(p.date).toLocaleDateString('fr-CA',{day:'numeric',month:'short',year:'numeric'});
     const thumb=p.photo?`<img src="${p.photo}" alt=""/>`:'🏚️';
+    const notes=(p.notes||[]);
     return `<div class="prosp-card" data-id="${p.id}">
       <div class="prosp-top">
         <div class="prosp-thumb">${thumb}</div>
         <div class="prosp-info">
-          <div class="prosp-addr">${esc(p.address)}</div>
+          <div class="prosp-title-row"><span class="prosp-addr" data-field="title">${esc(p.title||p.address)}</span><button class="mini-edit" data-edit="title" title="Modifier le titre">✏️</button></div>
+          <div class="prosp-addr-line"><span data-field="address">${esc(p.address)}</span><button class="mini-edit" data-edit="address" title="Modifier l'adresse">✏️</button></div>
           <div class="prosp-meta">📅 ${date}${p.addressResolved?'':' · 📍 GPS'}</div>
-          ${p.note?`<div class="prosp-note">🎤 ${esc(p.note)}</div>`:''}
         </div>
         <span class="prosp-status-badge ${stClass[p.status]}">${stLabel[p.status]}</span>
       </div>
+      ${notes.length?`<div class="prosp-notes">${notes.map((n,i)=>`<div class="pnote"><span class="pnote-ico">🎤</span><span class="pnote-txt">${esc(n)}</span><button class="pnote-del" data-noteidx="${i}" title="Supprimer cette note">✕</button></div>`).join('')}</div>`:''}
       <div class="prosp-checklist">
         <a class="pc-item ${p.checks.evalweb?'checked':''}" href="${evalUrl}" target="_blank" data-check="evalweb"><span class="pc-ico">🏛️</span>EvalWeb${p.checks.evalweb?' ✓':''}</a>
         <a class="pc-item ${p.checks.registre?'checked':''}" href="${regUrl}" target="_blank" data-check="registre"><span class="pc-ico">📋</span>Registre${p.checks.registre?' ✓':''}</a>
         <a class="pc-item ${p.checks.zonage?'checked':''}" href="${zonUrl}" target="_blank" data-check="zonage"><span class="pc-ico">🗺️</span>Zonage${p.checks.zonage?' ✓':''}</a>
-        <a class="pc-item" href="${mapUrl}" target="_blank"><span class="pc-ico">📍</span>Carte</a>
+        <button class="pc-item" data-adjust="1"><span class="pc-ico">🎯</span>Ajuster</button>
       </div>
       <div class="prosp-statusrow">
         <button class="psr-btn ${p.status==='todo'?'active':''}" data-status="todo">À vérifier</button>
@@ -757,25 +808,109 @@ function renderProsp(){
         <button class="psr-btn ${p.status==='done'?'active':''}" data-status="done">Complétée</button>
         <button class="psr-btn ${p.status==='skip'?'active':''}" data-status="skip">Écarter</button>
       </div>
+      <div class="prosp-toolrow">
+        <a class="pt-btn" href="${mapUrl}" target="_blank">📍 Voir carte</a>
+        ${p.archived?`<button class="pt-btn" data-unarchive="1">📤 Désarchiver</button>`:`<button class="pt-btn" data-archive="1">📥 Archiver</button>`}
+        <button class="pt-btn danger" data-delete="1">🗑️ Supprimer</button>
+      </div>
     </div>`;
   }).join('');
 
-  // Checklist toggles (long-press / click marks done; link still opens)
+  // Checklist link → open + mark checked
   el.querySelectorAll('.pc-item[data-check]').forEach(a=>{
-    a.addEventListener('click',(e)=>{
-      const card=a.closest('.prosp-card');const id=card.dataset.id;const check=a.dataset.check;
+    a.addEventListener('click',()=>{
+      const id=a.closest('.prosp-card').dataset.id;const check=a.dataset.check;
       const p=prosp().find(x=>x.id===id);if(!p)return;
-      // mark as checked after a short delay (lets the link open first)
       setTimeout(()=>{const checks={...p.checks,[check]:true};updateProsp(id,{checks,status:p.status==='todo'?'progress':p.status});renderProsp()},800);
     });
   });
-  el.querySelectorAll('.psr-btn').forEach(b=>{
-    b.addEventListener('click',()=>{
-      const id=b.closest('.prosp-card').dataset.id;
-      updateProsp(id,{status:b.dataset.status});renderProsp();
-    });
-  });
+  // Status buttons
+  el.querySelectorAll('.psr-btn').forEach(b=>b.addEventListener('click',()=>{
+    updateProsp(b.closest('.prosp-card').dataset.id,{status:b.dataset.status});renderProsp();
+  }));
+  // Edit title / address
+  el.querySelectorAll('.mini-edit').forEach(b=>b.addEventListener('click',async()=>{
+    const id=b.closest('.prosp-card').dataset.id;const field=b.dataset.edit;
+    const p=prosp().find(x=>x.id===id);if(!p)return;
+    const cur=field==='title'?(p.title||''):(p.address||'');
+    const val=prompt(field==='title'?'Titre de la propriété :':'Adresse :',cur);
+    if(val===null)return;
+    const changes={[field]:val.trim()};
+    // If address edited, re-geocode to update GPS point
+    if(field==='address'&&val.trim()){
+      changes.addressResolved=true;
+      try{
+        const key=cfg().google||GOOGLE_KEY;
+        const r=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(val.trim())}&key=${key}&language=fr`);
+        const d=await r.json();
+        if(d.status==='OK'&&d.results[0]){changes.lat=d.results[0].geometry.location.lat;changes.lng=d.results[0].geometry.location.lng}
+      }catch(e){}
+    }
+    updateProsp(id,changes);renderProsp();
+  }));
+  // Delete individual note
+  el.querySelectorAll('.pnote-del').forEach(b=>b.addEventListener('click',()=>{
+    const id=b.closest('.prosp-card').dataset.id;const idx=parseInt(b.dataset.noteidx);
+    const p=prosp().find(x=>x.id===id);if(!p)return;
+    const notes=[...(p.notes||[])];notes.splice(idx,1);
+    updateProsp(id,{notes});renderProsp();
+  }));
+  // Archive / unarchive
+  el.querySelectorAll('[data-archive]').forEach(b=>b.addEventListener('click',()=>{
+    updateProsp(b.closest('.prosp-card').dataset.id,{archived:true});renderProsp();showToast('📥 Archivée');
+  }));
+  el.querySelectorAll('[data-unarchive]').forEach(b=>b.addEventListener('click',()=>{
+    updateProsp(b.closest('.prosp-card').dataset.id,{archived:false});renderProsp();showToast('📤 Désarchivée');
+  }));
+  // Delete
+  el.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',()=>{
+    const id=b.closest('.prosp-card').dataset.id;
+    if(confirm('Supprimer définitivement cette propriété ?')){deleteProsp(id);renderProsp();showToast('🗑️ Supprimée')}
+  }));
+  // Adjust on map
+  el.querySelectorAll('[data-adjust]').forEach(b=>b.addEventListener('click',()=>{
+    openAdjustMap(b.closest('.prosp-card').dataset.id);
+  }));
 }
+
+// ═══════════════ MAP ADJUSTMENT ═══════════════
+let adjustMap=null,adjustMarker=null,adjustPano=null,adjustId=null;
+function openAdjustMap(id){
+  const p=prosp().find(x=>x.id===id);if(!p)return;
+  adjustId=id;
+  const lat=p.lat||45.5577,lng=p.lng||-73.5673; // default Montréal if no GPS
+  $('adjustOverlay').classList.add('show');
+  $('adjustAddrPreview').textContent=p.address||'(position à confirmer)';
+  // notes reminder
+  $('adjustNotes').innerHTML=(p.notes||[]).length?(p.notes||[]).map(n=>`🎤 ${esc(n)}`).join('<br>'):'<span style="color:var(--muted)">Aucune note</span>';
+  setTimeout(()=>{
+    if(!window.google){showToast('⚠️ Carte non disponible (clé Google)');return}
+    adjustMap=new google.maps.Map($('adjustMapDiv'),{center:{lat,lng},zoom:18,mapTypeId:'roadmap',streetViewControl:true,fullscreenControl:false,mapTypeControl:true});
+    adjustMarker=new google.maps.Marker({position:{lat,lng},map:adjustMap,draggable:true});
+    adjustMarker.addListener('dragend',()=>updateAdjustPreview());
+    adjustMap.addListener('click',(e)=>{adjustMarker.setPosition(e.latLng);updateAdjustPreview()});
+    // Street View shares the same panorama position
+    adjustPano=adjustMap.getStreetView();
+    adjustPano.setPosition({lat,lng});
+  },200);
+}
+async function updateAdjustPreview(){
+  const pos=adjustMarker.getPosition();
+  $('adjustAddrPreview').textContent='Reconstitution…';
+  try{const a=await reverseGeocode(pos.lat(),pos.lng());$('adjustAddrPreview').textContent=a||`(${pos.lat().toFixed(5)}, ${pos.lng().toFixed(5)})`}
+  catch(e){$('adjustAddrPreview').textContent=`(${pos.lat().toFixed(5)}, ${pos.lng().toFixed(5)})`}
+}
+$('adjustSave').addEventListener('click',async()=>{
+  if(!adjustMarker||!adjustId){$('adjustOverlay').classList.remove('show');return}
+  const pos=adjustMarker.getPosition();const lat=pos.lat(),lng=pos.lng();
+  let address=null;try{address=await reverseGeocode(lat,lng)}catch(e){}
+  const changes={lat,lng,addressResolved:!!address};
+  if(address){changes.address=address;const p=prosp().find(x=>x.id===adjustId);if(p&&(!p.title||p.title==='Nouvelle propriété'||p.title===p.address))changes.title=address}
+  updateProsp(adjustId,changes);
+  $('adjustOverlay').classList.remove('show');adjustMap=null;adjustMarker=null;adjustId=null;
+  renderProsp();showToast('✓ Position ajustée');
+});
+$('adjustCancel').addEventListener('click',()=>{$('adjustOverlay').classList.remove('show');adjustMap=null;adjustMarker=null;adjustId=null});
 
 // INIT
 window.addEventListener('load',()=>{checkConfig();initMaps()});
