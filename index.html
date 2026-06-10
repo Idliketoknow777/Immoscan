@@ -246,7 +246,15 @@
     @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
     ::-webkit-scrollbar{width:3px}
     ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-  </style>
+    .drive-status{font-size:12px;color:var(--muted);padding:6px 0;min-height:18px}
+    .drive-status.connected{color:var(--green)}
+    .drive-status.syncing{color:var(--sky)}
+    .drive-status.error{color:var(--red)}
+    .btn-drive-connect{width:100%;padding:12px;background:var(--s2);color:var(--text);border:1.5px solid var(--border);border-radius:11px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:.15s}
+    .btn-drive-connect:active{background:var(--border)}
+    .btn-drive-sync{width:100%;padding:12px;background:linear-gradient(135deg,#1a6b3c,#15803d);color:#fff;border:none;border-radius:11px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+    .btn-drive-sync:active{opacity:.85}
+    </style>
 </head>
 <body>
 <div class="shell">
@@ -344,7 +352,12 @@
     <div class="field"><label>Clé Anthropic (Claude)</label><input type="password" id="cfgAnthropic" placeholder="sk-ant-…"/></div>
     <div class="field"><label>Clé Google Maps</label><input type="password" id="cfgGoogle" placeholder="AIza…"/></div>
     <div class="hint">Anthropic : <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br>Google : <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a></div>
-    <div class="sep">Alertes DuProprio / Kijiji</div>
+<div class="sep">Synchro Google Drive</div>
+    <div id="driveStatus" class="drive-status"><!-- contenu dynamique --></div>
+    <button class="btn-drive-connect" id="btnDriveConnect">🔗 Connecter Google Drive</button>
+    <button class="btn-drive-sync" id="btnDriveSync" style="display:none">☁️ Synchroniser maintenant</button>
+    <div class="hint">Tes prospects et ta clé Anthropic seront synchronisés entre tous tes appareils via ton Google Drive.</div>
+        <div class="sep">Alertes DuProprio / Kijiji</div>
     <div class="field"><label>URL recherche DuProprio</label><input type="url" id="cfgDP" placeholder="https://duproprio.com/fr/recherche…"/></div>
     <div class="field"><label>URL recherche Kijiji (optionnel)</label><input type="url" id="cfgKJ" placeholder="https://www.kijiji.ca/b-maison-a-vendre/…"/></div>
     <div class="field"><label>Ton courriel</label><input type="email" id="cfgEmail" placeholder="toi@exemple.com"/></div>
@@ -914,6 +927,274 @@ $('adjustCancel').addEventListener('click',()=>{$('adjustOverlay').classList.rem
 
 // INIT
 window.addEventListener('load',()=>{checkConfig();initMaps()});
+
+// ═══════════════════════════════════════════════════════
+// GOOGLE DRIVE SYNC
+// ═══════════════════════════════════════════════════════
+// CONFIGURATION REQUISE :
+//   Remplace la valeur de GIS_CLIENT_ID ci-dessous par ton
+//   Client ID OAuth 2.0 (console.cloud.google.com →
+//   API et services → Identifiants → ID client OAuth).
+//   Exemple : '123456789-abcdefgh.apps.googleusercontent.com'
+// ═══════════════════════════════════════════════════════
+
+const DRIVE_TOKEN_KEY = 'imsc_drv_token';
+const DRIVE_DATA_FILE = 'immoscan_data.json';
+const DRIVE_CFG_FILE  = 'immoscan_cfg.json';
+const GIS_CLIENT_ID   = '791511316524-c82bmsntb91lgj6ji3egi39lqio0p4e9.apps.googleusercontent.com';
+
+let driveToken      = null;
+let driveSyncTimer  = null;
+let driveDataFileId = null;
+let driveCfgFileId  = null;
+
+function getDriveToken() {
+  try {
+    const t = JSON.parse(localStorage.getItem(DRIVE_TOKEN_KEY) || 'null');
+    if (!t || Date.now() > t.expires) return null;
+    return t;
+  } catch { return null; }
+}
+
+function setDriveToken(tokenObj) {
+  const t = { access_token: tokenObj.access_token, expires: Date.now() + (tokenObj.expires_in - 60) * 1000 };
+  localStorage.setItem(DRIVE_TOKEN_KEY, JSON.stringify(t));
+  driveToken = t;
+}
+
+function clearDriveToken() {
+  localStorage.removeItem(DRIVE_TOKEN_KEY);
+  driveToken = null;
+  driveDataFileId = null;
+  driveCfgFileId  = null;
+}
+
+async function initDrive() {
+  const t = getDriveToken();
+  if (!t) return;
+  driveToken = t;
+  updateDriveStatus('syncing', '☁️ Synchronisation…');
+  try {
+    await drivePullAll();
+    updateDriveStatus('connected', '✓ Drive connecté · ' + new Date().toLocaleTimeString('fr-CA', {hour:'2-digit',minute:'2-digit'}));
+  } catch(e) {
+    updateDriveStatus('error', '⚠️ Erreur Drive : ' + (e.message || 'connexion échouée'));
+  }
+}
+
+function updateDriveStatus(state, msg) {
+  const el = $('driveStatus');
+  if (!el) return;
+  el.className = 'drive-status ' + state;
+  el.textContent = msg;
+  const connectBtn = $('btnDriveConnect');
+  const syncBtn    = $('btnDriveSync');
+  if (connectBtn && syncBtn) {
+    const connected = state === 'connected' || state === 'syncing';
+    connectBtn.style.display = connected ? 'none' : 'block';
+    syncBtn.style.display    = connected ? 'block' : 'none';
+  }
+}
+
+async function driveApi(method, path, body, params) {
+  if (!driveToken) throw new Error('Non authentifié');
+  const url = new URL('https://www.googleapis.com' + path);
+  if (params) Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  const opts = { method, headers: { 'Authorization': 'Bearer ' + driveToken.access_token } };
+  if (body) {
+    if (typeof body === 'string') {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = body;
+    } else {
+      opts.body = body;
+    }
+  }
+  const resp = await fetch(url.toString(), opts);
+  if (resp.status === 401) { clearDriveToken(); throw new Error('Token expiré'); }
+  if (!resp.ok) throw new Error('Drive API ' + resp.status);
+  if (resp.status === 204) return null;
+  return resp.json();
+}
+
+async function driveFindFile(name) {
+  const data = await driveApi('GET', '/drive/v3/files', null, {
+    q: `name='${name}' and trashed=false`,
+    fields: 'files(id,name,modifiedTime)',
+    spaces: 'drive'
+  });
+  return data.files && data.files[0] ? data.files[0] : null;
+}
+
+async function driveReadFile(fileId) {
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { 'Authorization': 'Bearer ' + driveToken.access_token }
+  });
+  if (!resp.ok) throw new Error('Drive read ' + resp.status);
+  return resp.json();
+}
+
+async function driveWriteFile(fileId, name, content_obj) {
+  const metadata     = JSON.stringify({ name, mimeType: 'application/json' });
+  const body_content = JSON.stringify(content_obj);
+  const boundary     = 'immoscan_boundary';
+  const multipart    = `--${boundary}
+Content-Type: application/json; charset=UTF-8
+
+${metadata}
+--${boundary}
+Content-Type: application/json
+
+${body_content}
+--${boundary}--`;
+  const url = fileId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
+    : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+  const resp = await fetch(url, {
+    method: fileId ? 'PATCH' : 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + driveToken.access_token,
+      'Content-Type': `multipart/related; boundary=${boundary}`
+    },
+    body: multipart
+  });
+  if (!resp.ok) throw new Error('Drive write ' + resp.status);
+  return resp.json();
+}
+
+function mergeProspects(local, remote) {
+  const map = new Map();
+  [...(remote || []), ...(local || [])].forEach(p => {
+    const existing = map.get(p.id);
+    if (!existing || new Date(p.date) >= new Date(existing.date)) {
+      map.set(p.id, p);
+    }
+  });
+  return Array.from(map.values()).sort((a,b) => new Date(b.date) - new Date(a.date));
+}
+
+async function drivePullAll() {
+  // Config
+  const cfgFile = await driveFindFile(DRIVE_CFG_FILE);
+  if (cfgFile) {
+    driveCfgFileId = cfgFile.id;
+    const remoteCfg = await driveReadFile(cfgFile.id);
+    const localCfg  = cfg();
+    const merged    = { ...localCfg, ...remoteCfg, google: localCfg.google || remoteCfg.google };
+    saveCfg(merged);
+    checkConfig();
+  }
+  // Données
+  const dataFile = await driveFindFile(DRIVE_DATA_FILE);
+  if (dataFile) {
+    driveDataFileId = dataFile.id;
+    const remote = await driveReadFile(dataFile.id);
+    if (remote && remote.prospects) {
+      const merged = mergeProspects(prosp(), remote.prospects);
+      saveProsp(merged);
+    }
+    if (remote && remote.hist)   saveHist(remote.hist);
+    if (remote && remote.alerts) saveAlerts(remote.alerts);
+  }
+  if (currentTab === 'prosp')   renderProsp();
+  if (currentTab === 'history') renderHistory();
+}
+
+function drivePushDebounced() {
+  if (!driveToken) return;
+  clearTimeout(driveSyncTimer);
+  driveSyncTimer = setTimeout(drivePushNow, 3000);
+}
+
+async function drivePushNow() {
+  if (!driveToken) return;
+  updateDriveStatus('syncing', '☁️ Sauvegarde…');
+  try {
+    const dataContent = {
+      version: 1,
+      lastModified: new Date().toISOString(),
+      deviceId: getDeviceId(),
+      prospects: prosp(),
+      hist: hist(),
+      alerts: alerts()
+    };
+    const dataResult = await driveWriteFile(driveDataFileId, DRIVE_DATA_FILE, dataContent);
+    driveDataFileId  = dataResult.id;
+    const cfgData    = cfg();
+    const cfgContent = { version: 1, ...cfgData };
+    delete cfgContent.google;
+    const cfgResult = await driveWriteFile(driveCfgFileId, DRIVE_CFG_FILE, cfgContent);
+    driveCfgFileId  = cfgResult.id;
+    updateDriveStatus('connected', '✓ Sync Drive · ' + new Date().toLocaleTimeString('fr-CA', {hour:'2-digit',minute:'2-digit'}));
+  } catch(e) {
+    updateDriveStatus('error', '⚠️ ' + (e.message || 'erreur sync'));
+  }
+}
+
+function getDeviceId() {
+  let id = localStorage.getItem('imsc_device_id');
+  if (!id) { id = 'dev_' + Math.random().toString(36).slice(2,10); localStorage.setItem('imsc_device_id', id); }
+  return id;
+}
+
+$('btnDriveConnect').addEventListener('click', () => {
+  if (!GIS_CLIENT_ID) {
+    alert('Configure ton Client ID Google OAuth dans le code.\n\nVoir : console.cloud.google.com → Identifiants → ID client OAuth 2.0\n\nRemplace la valeur de GIS_CLIENT_ID dans index.html.');
+    return;
+  }
+  const params = new URLSearchParams({
+    client_id: GIS_CLIENT_ID,
+    redirect_uri: window.location.origin + window.location.pathname,
+    response_type: 'token',
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    include_granted_scopes: 'true'
+  });
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+});
+
+$('btnDriveSync').addEventListener('click', async () => {
+  if (!driveToken) return;
+  updateDriveStatus('syncing', '☁️ Synchronisation en cours…');
+  try {
+    await drivePullAll();
+    await drivePushNow();
+  } catch(e) {
+    updateDriveStatus('error', '⚠️ ' + e.message);
+  }
+});
+
+// Intercepter le callback OAuth (hash fragment #access_token=...)
+(function handleOAuthCallback() {
+  const hash = window.location.hash;
+  if (!hash.includes('access_token')) return;
+  const params = new URLSearchParams(hash.slice(1));
+  const token  = params.get('access_token');
+  const expiresIn = parseInt(params.get('expires_in') || '3600');
+  if (token) {
+    setDriveToken({ access_token: token, expires_in: expiresIn });
+    window.history.replaceState(null, '', window.location.pathname);
+    showToast('✓ Google Drive connecté !');
+    initDrive();
+  }
+})();
+
+// Wrapper addProsp / updateProsp / deleteProsp pour déclencher la synchro auto
+const _origAddProsp    = addProsp;
+const _origUpdateProsp = updateProsp;
+const _origDeleteProsp = deleteProsp;
+window.addProsp    = function(entry)    { _origAddProsp(entry);       drivePushDebounced(); };
+window.updateProsp = function(id, chg) { _origUpdateProsp(id, chg);  drivePushDebounced(); };
+window.deleteProsp = function(id)      { _origDeleteProsp(id);       drivePushDebounced(); };
+
+// Patcher btnSave (Réglages) pour aussi pusher la config
+$('btnSave').addEventListener('click', () => {
+  setTimeout(() => { if (driveToken) drivePushDebounced(); }, 100);
+});
+
+// Lancer la synchro au démarrage
+initDrive();
+
+// ═══════════════ FIN DRIVE SYNC ═══════════════
+
 </script>
 </body>
 </html>
