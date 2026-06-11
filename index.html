@@ -388,7 +388,7 @@ const GOOGLE_KEY='AIzaSyAbCllaHhww1nLNVkYT1myTe3FDIa-96o8';
 // ── MODULE ZONAGE ────────────────────────────────────────────────────────────
 // Après avoir déployé zonage-worker.js sur Cloudflare Workers,
 // remplace l'URL ci-dessous par ton URL Workers (ex: https://zonage.monnom.workers.dev)
-const ZONAGE_WORKER_URL=''; // ← à remplir après déploiement Cloudflare
+const ZONAGE_WORKER_URL='https://immoscan-zonage.ftremblay777.workers.dev';
 const cfg=()=>{try{return JSON.parse(localStorage.getItem('imsc_cfg')||'{}')}catch{return{}}};
 const saveCfg=o=>localStorage.setItem('imsc_cfg',JSON.stringify(o));
 const hist=()=>{try{return JSON.parse(localStorage.getItem('imsc_hist')||'[]')}catch{return[]}};
