@@ -773,13 +773,23 @@ $('photoInput').addEventListener('change',(e)=>{
 
 // Manual entry
 $('manualToggle').addEventListener('click',()=>$('manualRow').classList.toggle('hidden'));
-$('manualAdd').addEventListener('click',()=>{
+$('manualAdd').addEventListener('click',async()=>{
   const addr=$('manualAddr').value.trim();if(!addr)return;
-  const gps=window._manualGPS||{};window._manualGPS=null;
-  addProsp(newProspEntry({address:addr,title:addr,addressResolved:true,lat:gps.lat||null,lng:gps.lng||null}));
+  const btn=$('manualAdd');btn.disabled=true;btn.textContent='…';
+  let lat=null,lng=null;
+  if(window._manualGPS){lat=window._manualGPS.lat;lng=window._manualGPS.lng;window._manualGPS=null;}
+  else{
+    try{
+      const gr=await fetch('https://maps.googleapis.com/maps/api/geocode/json?address='+encodeURIComponent(addr)+'&key='+GOOGLE_KEY+'&language=fr');
+      const gd=await gr.json();
+      if(gd.status==='OK'&&gd.results[0]){const loc=gd.results[0].geometry.location;lat=loc.lat;lng=loc.lng;}
+    }catch(e){}
+  }
+  addProsp(newProspEntry({address:addr,title:addr,addressResolved:true,lat,lng}));
   $('manualAddr').value='';$('manualRow').classList.add('hidden');
+  btn.disabled=false;btn.textContent='+';
   const mAC=$('manualACDiv');if(mAC){mAC.classList.remove('show');mAC.innerHTML=''}
-  showToast('✓ Propriété ajoutée à la liste');
+  showToast(lat?'✓ Propriété ajoutée avec GPS':'✓ Propriété ajoutée (sans GPS — Ajuster si besoin)');
 });
 // Autocomplete pour l'entrée manuelle
 (()=>{
