@@ -394,6 +394,7 @@ const GOOGLE_KEY='AIzaSyAbCllaHhww1nLNVkYT1myTe3FDIa-96o8';
 // Après avoir déployé zonage-worker.js sur Cloudflare Workers,
 // remplace l'URL ci-dessous par ton URL Workers (ex: https://zonage.monnom.workers.dev)
 const ZONAGE_WORKER_URL='https://immoscan-zonage.ftremblay777.workers.dev';
+const CI_BASE_URL={RPP:'https://www.cartesinteractives.ca/rpp/',MHM:'https://www.cartesinteractives.ca/mhm/',PMR:'https://www.cartesinteractives.ca/lpmr/',CDN:'https://www.cartesinteractives.ca/cdnndg/'};
 const cfg=()=>{try{return JSON.parse(localStorage.getItem('imsc_cfg')||'{}')}catch{return{}}};
 const saveCfg=o=>localStorage.setItem('imsc_cfg',JSON.stringify(o));
 const hist=()=>{try{return JSON.parse(localStorage.getItem('imsc_hist')||'[]')}catch{return[]}};
@@ -869,7 +870,7 @@ function renderProsp(){
         <a class="pc-item ${p.checks.evalweb?'checked':''}" href="${evalUrl}" target="_blank" data-check="evalweb"><span class="pc-ico">🏛️</span>EvalWeb${p.checks.evalweb?' ✓':''}</a>
         <a class="pc-item ${p.checks.registre?'checked':''}" href="${regUrl}" target="_blank" data-check="registre"><span class="pc-ico">📋</span>Registre${p.checks.registre?' ✓':''}</a>
         ${p.zonageResult
-          ?`<div class="pc-item checked" style="flex-direction:column;gap:2px;cursor:default;align-items:center"><span style="font-size:11px;font-weight:700;line-height:1.2">🗺️ ${esc(p.zonageResult.zone)}</span><a href="${esc(p.zonageResult.lien)}" target="_blank" style="font-size:9px;color:var(--accent);text-decoration:none;pointer-events:all">📄 Fiche</a></div>`
+          ?`<div class="pc-item checked" style="flex-direction:column;gap:2px;cursor:default;align-items:center"><span style="font-size:11px;font-weight:700;line-height:1.2">🗺️ ${esc(p.zonageResult.zone)}</span><div style="display:flex;gap:6px;align-items:center"><a href="${esc(p.zonageResult.lien)}" target="_blank" style="font-size:9px;color:var(--accent);text-decoration:none;pointer-events:all">📄 Fiche</a>${(CI_BASE_URL[p.zonageResult.arr]&&p.lat&&p.lng)?`<a href="${CI_BASE_URL[p.zonageResult.arr]}#17/${p.lat}/${p.lng}" target="_blank" style="font-size:9px;color:var(--accent);text-decoration:none;pointer-events:all">🌐 Carte</a>`:''}</div></div>`
           :`<button class="pc-item" data-zonage="1"><span class="pc-ico">🗺️</span>Zonage</button>`}
         <button class="pc-item" data-adjust="1"><span class="pc-ico">🎯</span>Ajuster</button>
       </div>
