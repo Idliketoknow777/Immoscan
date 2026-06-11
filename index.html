@@ -775,7 +775,8 @@ $('photoInput').addEventListener('change',(e)=>{
 $('manualToggle').addEventListener('click',()=>$('manualRow').classList.toggle('hidden'));
 $('manualAdd').addEventListener('click',()=>{
   const addr=$('manualAddr').value.trim();if(!addr)return;
-  addProsp(newProspEntry({address:addr,title:addr,addressResolved:true}));
+  const gps=window._manualGPS||{};window._manualGPS=null;
+  addProsp(newProspEntry({address:addr,title:addr,addressResolved:true,lat:gps.lat||null,lng:gps.lng||null}));
   $('manualAddr').value='';$('manualRow').classList.add('hidden');
   const mAC=$('manualACDiv');if(mAC){mAC.classList.remove('show');mAC.innerHTML=''}
   showToast('✓ Propriété ajoutée à la liste');
@@ -788,6 +789,7 @@ $('manualAdd').addEventListener('click',()=>{
   inp.parentNode.insertBefore(acDiv,inp.nextSibling);
   let mTimer=null;
   inp.addEventListener('input',e=>{
+    window._manualGPS=null;
     const v=e.target.value.trim();clearTimeout(mTimer);
     if(v.length<3){acDiv.classList.remove('show');acDiv.innerHTML='';return}
     mTimer=setTimeout(()=>{
@@ -795,8 +797,14 @@ $('manualAdd').addEventListener('click',()=>{
       acSvc.getPlacePredictions({input:v+' Québec',componentRestrictions:{country:'ca'},types:['address'],sessionToken:acToken},(preds,status)=>{
         if(status!==google.maps.places.PlacesServiceStatus.OK||!preds){acDiv.classList.remove('show');acDiv.innerHTML='';return}
         acDiv.innerHTML=preds.slice(0,5).map(p=>'<div class="ac-item" data-addr="'+p.description.replace(/"/g,'&quot;')+'"><span class="ac-pin">📍</span><div><div class="ac-main">'+p.structured_formatting.main_text+'</div><div class="ac-sub">'+(p.structured_formatting.secondary_text||'')+'</div></div></div>').join('');
-        acDiv.querySelectorAll('.ac-item').forEach(item=>item.addEventListener('click',()=>{
+        acDiv.querySelectorAll('.ac-item').forEach(item=>item.addEventListener('click',async()=>{
           inp.value=item.dataset.addr;acDiv.classList.remove('show');acDiv.innerHTML='';
+          window._manualGPS=null;
+          try{
+            const gr=await fetch('https://maps.googleapis.com/maps/api/geocode/json?address='+encodeURIComponent(item.dataset.addr)+'&key='+GOOGLE_KEY+'&language=fr');
+            const gd=await gr.json();
+            if(gd.status==='OK'&&gd.results[0]){const loc=gd.results[0].geometry.location;window._manualGPS={lat:loc.lat,lng:loc.lng};}
+          }catch(e){}
         }));
         acDiv.classList.add('show');
       });
