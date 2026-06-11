@@ -385,6 +385,10 @@
 
 <script>
 const GOOGLE_KEY='AIzaSyAbCllaHhww1nLNVkYT1myTe3FDIa-96o8';
+// ── MODULE ZONAGE ────────────────────────────────────────────────────────────
+// Après avoir déployé zonage-worker.js sur Cloudflare Workers,
+// remplace l'URL ci-dessous par ton URL Workers (ex: https://zonage.monnom.workers.dev)
+const ZONAGE_WORKER_URL=''; // ← à remplir après déploiement Cloudflare
 const cfg=()=>{try{return JSON.parse(localStorage.getItem('imsc_cfg')||'{}')}catch{return{}}};
 const saveCfg=o=>localStorage.setItem('imsc_cfg',JSON.stringify(o));
 const hist=()=>{try{return JSON.parse(localStorage.getItem('imsc_hist')||'[]')}catch{return[]}};
@@ -400,6 +404,7 @@ function migrateProsp(e){
   if(e.archived===undefined)e.archived=false;
   if(e.title===undefined)e.title=e.address||'Propriété';
   if(e.checks===undefined)e.checks={evalweb:false,registre:false,zonage:false};
+  if(e.zonageResult===undefined)e.zonageResult=null;
   return e;
 }
 function newProspEntry(o){return Object.assign({id:uid(),lat:null,lng:null,address:'',title:'',addressResolved:false,date:new Date().toISOString(),status:'todo',notes:[],photo:null,archived:false,checks:{evalweb:false,registre:false,zonage:false}},o)}
@@ -812,7 +817,9 @@ function renderProsp(){
       <div class="prosp-checklist">
         <a class="pc-item ${p.checks.evalweb?'checked':''}" href="${evalUrl}" target="_blank" data-check="evalweb"><span class="pc-ico">🏛️</span>EvalWeb${p.checks.evalweb?' ✓':''}</a>
         <a class="pc-item ${p.checks.registre?'checked':''}" href="${regUrl}" target="_blank" data-check="registre"><span class="pc-ico">📋</span>Registre${p.checks.registre?' ✓':''}</a>
-        <a class="pc-item ${p.checks.zonage?'checked':''}" href="${zonUrl}" target="_blank" data-check="zonage"><span class="pc-ico">🗺️</span>Zonage${p.checks.zonage?' ✓':''}</a>
+        ${p.zonageResult
+          ?`<a class="pc-item checked" href="${esc(p.zonageResult.lien)}" target="_blank"><span class="pc-ico">🗺️</span><span style="font-size:9px;line-height:1.2">${esc(p.zonageResult.zone)}</span>✓</a>`
+          :`<button class="pc-item" data-zonage="1"><span class="pc-ico">🗺️</span>Zonage</button>`}
         <button class="pc-item" data-adjust="1"><span class="pc-ico">🎯</span>Ajuster</button>
       </div>
       <div class="prosp-statusrow">
@@ -837,6 +844,10 @@ function renderProsp(){
       setTimeout(()=>{const checks={...p.checks,[check]:true};updateProsp(id,{checks,status:p.status==='todo'?'progress':p.status});renderProsp()},800);
     });
   });
+  // Zonage button → lookup via Worker
+  el.querySelectorAll('[data-zonage]').forEach(b=>b.addEventListener('click',()=>{
+    handleZonage(b.closest('.prosp-card').dataset.id);
+  }));
   // Status buttons
   el.querySelectorAll('.psr-btn').forEach(b=>b.addEventListener('click',()=>{
     updateProsp(b.closest('.prosp-card').dataset.id,{status:b.dataset.status});renderProsp();
@@ -884,6 +895,42 @@ function renderProsp(){
   el.querySelectorAll('[data-adjust]').forEach(b=>b.addEventListener('click',()=>{
     openAdjustMap(b.closest('.prosp-card').dataset.id);
   }));
+}
+
+// ═══════════════ ZONAGE MODULE ═══════════════
+async function handleZonage(id){
+  if(!ZONAGE_WORKER_URL){
+    showToast('⚙️ Configure ZONAGE_WORKER_URL dans le code');
+    return;
+  }
+  const p=prosp().find(x=>x.id===id);
+  if(!p){return;}
+  if(!p.lat||!p.lng){
+    showToast('⚠️ Pas de GPS — ajuste la position d\'abord');
+    return;
+  }
+  const card=document.querySelector(`.prosp-card[data-id="${id}"]`);
+  const btn=card?.querySelector('[data-zonage]');
+  if(btn){btn.disabled=true;btn.querySelector('.pc-ico').textContent='⏳';}
+  try{
+    const resp=await fetch(ZONAGE_WORKER_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({lat:p.lat,lng:p.lng})
+    });
+    const data=await resp.json();
+    if(!resp.ok)throw new Error(data.error||'Erreur zonage');
+    updateProsp(id,{
+      zonageResult:{zone:data.zone,lien:data.lien,arr:data.arrondissement},
+      checks:{...p.checks,zonage:true},
+      status:p.status==='todo'?'progress':p.status
+    });
+    renderProsp();
+    showToast('✓ Zone '+data.zone+' ('+data.arrondissement+')');
+  }catch(e){
+    if(btn){btn.disabled=false;btn.querySelector('.pc-ico').textContent='🗺️';}
+    showToast('⚠️ '+(e.message||'Erreur zonage'));
+  }
 }
 
 // ═══════════════ MAP ADJUSTMENT ═══════════════
