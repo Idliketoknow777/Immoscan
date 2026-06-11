@@ -370,8 +370,13 @@
   <div class="adjust-sheet">
     <div class="handle"></div>
     <h2>Ajuster la position</h2>
-    <p class="adjust-hint">Déplace le point sur la vraie propriété. Utilise Street View (icône bonhomme orange) pour confirmer visuellement.</p>
+    <p class="adjust-hint">Déplace le point sur la vraie propriété, ou cherche l'adresse exacte ci-dessous.</p>
     <div class="adjust-notes-box" id="adjustNotes"></div>
+    <div style="position:relative;margin-bottom:4px">
+      <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none">🔍</span>
+      <input type="text" id="adjustSearch" placeholder="Chercher l'adresse exacte…" autocomplete="off" style="width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Epilogue',sans-serif;font-size:13px;padding:11px 13px 11px 38px;outline:none;box-sizing:border-box"/>
+      <div class="ac" id="adjustAC"></div>
+    </div>
     <div id="adjustMapDiv" class="adjust-map"></div>
     <div class="adjust-addr">📍 <span id="adjustAddrPreview">…</span></div>
     <div class="adjust-actions">
@@ -772,8 +777,33 @@ $('manualAdd').addEventListener('click',()=>{
   const addr=$('manualAddr').value.trim();if(!addr)return;
   addProsp(newProspEntry({address:addr,title:addr,addressResolved:true}));
   $('manualAddr').value='';$('manualRow').classList.add('hidden');
+  const mAC=$('manualACDiv');if(mAC){mAC.classList.remove('show');mAC.innerHTML=''}
   showToast('✓ Propriété ajoutée à la liste');
 });
+// Autocomplete pour l'entrée manuelle
+(()=>{
+  const inp=$('manualAddr');
+  const acDiv=document.createElement('div');acDiv.className='ac';acDiv.id='manualACDiv';
+  inp.parentNode.style.position='relative';
+  inp.parentNode.insertBefore(acDiv,inp.nextSibling);
+  let mTimer=null;
+  inp.addEventListener('input',e=>{
+    const v=e.target.value.trim();clearTimeout(mTimer);
+    if(v.length<3){acDiv.classList.remove('show');acDiv.innerHTML='';return}
+    mTimer=setTimeout(()=>{
+      if(!acSvc)return;
+      acSvc.getPlacePredictions({input:v+' Québec',componentRestrictions:{country:'ca'},types:['address'],sessionToken:acToken},(preds,status)=>{
+        if(status!==google.maps.places.PlacesServiceStatus.OK||!preds){acDiv.classList.remove('show');acDiv.innerHTML='';return}
+        acDiv.innerHTML=preds.slice(0,5).map(p=>'<div class="ac-item" data-addr="'+p.description.replace(/"/g,'&quot;')+'"><span class="ac-pin">📍</span><div><div class="ac-main">'+p.structured_formatting.main_text+'</div><div class="ac-sub">'+(p.structured_formatting.secondary_text||'')+'</div></div></div>').join('');
+        acDiv.querySelectorAll('.ac-item').forEach(item=>item.addEventListener('click',()=>{
+          inp.value=item.dataset.addr;acDiv.classList.remove('show');acDiv.innerHTML='';
+        }));
+        acDiv.classList.add('show');
+      });
+    },280);
+  });
+  inp.addEventListener('keydown',e=>{if(e.key==='Escape'){acDiv.classList.remove('show');acDiv.innerHTML=''}});
+})();
 
 // ═══════════════ PROSPECT LIST ═══════════════
 function deleteProsp(id){const p=prosp().filter(x=>x.id!==id);saveProsp(p)}
@@ -949,6 +979,39 @@ function openAdjustMap(id){
     adjustMarker=new google.maps.Marker({position:{lat,lng},map:adjustMap,draggable:true});
     adjustMarker.addListener('dragend',()=>updateAdjustPreview());
     adjustMap.addListener('click',(e)=>{adjustMarker.setPosition(e.latLng);updateAdjustPreview()});
+    // Autocomplete dans le champ de recherche Ajuster
+    (()=>{
+      const adjInput=$('adjustSearch'),adjAC=$('adjustAC');
+      if(!adjInput)return;
+      adjInput.value='';
+      let adjTimer=null;
+      adjInput.addEventListener('input',e=>{
+        const v=e.target.value.trim();clearTimeout(adjTimer);
+        if(v.length<3){adjAC.classList.remove('show');adjAC.innerHTML='';return}
+        adjTimer=setTimeout(()=>{
+          if(!acSvc)return;
+          acSvc.getPlacePredictions({input:v+' Montréal',componentRestrictions:{country:'ca'},types:['address'],sessionToken:acToken},(preds,status)=>{
+            if(status!==google.maps.places.PlacesServiceStatus.OK||!preds){adjAC.classList.remove('show');adjAC.innerHTML='';return}
+            adjAC.innerHTML=preds.slice(0,5).map(p=>'<div class="ac-item" data-addr="'+p.description.replace(/"/g,'&quot;')+'"><span class="ac-pin">📍</span><div><div class="ac-main">'+p.structured_formatting.main_text+'</div><div class="ac-sub">'+(p.structured_formatting.secondary_text||'')+'</div></div></div>').join('');
+            adjAC.querySelectorAll('.ac-item').forEach(item=>item.addEventListener('click',async()=>{
+              adjInput.value=item.dataset.addr;adjAC.classList.remove('show');adjAC.innerHTML='';
+              try{
+                const resp2=await fetch('https://maps.googleapis.com/maps/api/geocode/json?address='+encodeURIComponent(item.dataset.addr)+'&key='+GOOGLE_KEY+'&language=fr');
+                const d=await resp2.json();
+                if(d.status==='OK'&&d.results[0]){
+                  const loc=d.results[0].geometry.location;
+                  const pos=new google.maps.LatLng(loc.lat,loc.lng);
+                  adjustMarker.setPosition(pos);adjustMap.panTo(pos);adjustMap.setZoom(18);
+                  updateAdjustPreview();
+                }
+              }catch(err){showToast('Géocodage échoué')}
+            }));
+            adjAC.classList.add('show');
+          });
+        },280);
+      });
+      adjInput.addEventListener('keydown',e=>{if(e.key==='Escape'){adjAC.classList.remove('show');adjAC.innerHTML=''}});
+    })();
     // Street View shares the same panorama position
     adjustPano=adjustMap.getStreetView();
     adjustPano.setPosition({lat,lng});
