@@ -1012,7 +1012,7 @@ function parseMontrealAddress(addr){
 }
 
 async function handleEvalWeb(id){
-  const p=prospects.find(x=>x.id===id);
+  const p=prosp().find(x=>x.id===id);
   if(!p) return;
   const parsed=parseMontrealAddress(p.address||p.title||'');
   if(!parsed){showToast('Adresse non reconnue — vérifiez le format');return;}
@@ -1021,10 +1021,7 @@ async function handleEvalWeb(id){
     const r=await fetch(EVALWEB_WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(parsed)});
     const data=await r.json();
     if(!r.ok||data.error) throw new Error(data.error||'Erreur');
-    p.evalwebResult=data;
-    p.checks.evalweb=true;
-    saveProspects();
-    renderAll();
+    updateProsp(id,{evalwebResult:data,checks:{...p.checks,evalweb:true}});
     showToast('Évaluation chargée ✓');
   }catch(e){
     showToast('Erreur EvalWeb: '+e.message);
