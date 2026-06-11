@@ -722,6 +722,7 @@ $('bigCapture').addEventListener('click',()=>{
     try{address=await reverseGeocode(lat,lng)}catch(e){}
     const entry=newProspEntry({lat,lng,address:address||`(${lat.toFixed(5)}, ${lng.toFixed(5)})`,title:address||'Nouvelle propriété',addressResolved:!!address});
     addProsp(entry);
+    handleZonage(entry.id);
     btn.classList.remove('busy');ico.textContent='✅';lbl.textContent='Capturé !';
     $('capStatus').textContent=address?`✓ ${address}`:'✓ Position enregistrée (adresse à confirmer)';
     setTimeout(()=>{ico.textContent='📍';lbl.textContent='Capturer ici';$('capStatus').textContent=''},3500);
@@ -785,11 +786,13 @@ $('manualAdd').addEventListener('click',async()=>{
       if(gd.status==='OK'&&gd.results[0]){const loc=gd.results[0].geometry.location;lat=loc.lat;lng=loc.lng;}
     }catch(e){}
   }
-  addProsp(newProspEntry({address:addr,title:addr,addressResolved:true,lat,lng}));
-  $('manualAddr').value='';$('manualRow').classList.add('hidden');
+  const entry=newProspEntry({address:addr,title:addr,addressResolved:true,lat,lng});
+  addProsp(entry);
   btn.disabled=false;btn.textContent='+';
+  $('manualAddr').value='';$('manualRow').classList.add('hidden');
   const mAC=$('manualACDiv');if(mAC){mAC.classList.remove('show');mAC.innerHTML=''}
-  showToast(lat?'✓ Propriété ajoutée avec GPS':'✓ Propriété ajoutée (sans GPS — Ajuster si besoin)');
+  if(lat&&lng){showToast('✓ Ajoutée — recherche du zonage…');handleZonage(entry.id);}
+  else{showToast('✓ Propriété ajoutée (sans GPS — Ajuster si besoin)');}
 });
 // Autocomplete pour l'entrée manuelle
 (()=>{
@@ -866,7 +869,7 @@ function renderProsp(){
         <a class="pc-item ${p.checks.evalweb?'checked':''}" href="${evalUrl}" target="_blank" data-check="evalweb"><span class="pc-ico">🏛️</span>EvalWeb${p.checks.evalweb?' ✓':''}</a>
         <a class="pc-item ${p.checks.registre?'checked':''}" href="${regUrl}" target="_blank" data-check="registre"><span class="pc-ico">📋</span>Registre${p.checks.registre?' ✓':''}</a>
         ${p.zonageResult
-          ?`<a class="pc-item checked" href="${esc(p.zonageResult.lien)}" target="_blank"><span class="pc-ico">🗺️</span><span style="font-size:9px;line-height:1.2">${esc(p.zonageResult.zone)}</span>✓</a>`
+          ?`<div class="pc-item checked" style="flex-direction:column;gap:2px;cursor:default;align-items:center"><span style="font-size:11px;font-weight:700;line-height:1.2">🗺️ ${esc(p.zonageResult.zone)}</span><a href="${esc(p.zonageResult.lien)}" target="_blank" style="font-size:9px;color:var(--accent);text-decoration:none;pointer-events:all">📄 Fiche</a></div>`
           :`<button class="pc-item" data-zonage="1"><span class="pc-ico">🗺️</span>Zonage</button>`}
         <button class="pc-item" data-adjust="1"><span class="pc-ico">🎯</span>Ajuster</button>
       </div>
