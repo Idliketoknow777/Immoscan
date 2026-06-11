@@ -394,6 +394,7 @@ const GOOGLE_KEY='AIzaSyAbCllaHhww1nLNVkYT1myTe3FDIa-96o8';
 // Après avoir déployé zonage-worker.js sur Cloudflare Workers,
 // remplace l'URL ci-dessous par ton URL Workers (ex: https://zonage.monnom.workers.dev)
 const ZONAGE_WORKER_URL='https://immoscan-zonage.ftremblay777.workers.dev';
+const EVALWEB_WORKER_URL='https://immoscan-evalweb.ftremblay777.workers.dev';
 const SPECTRUM_CFG={RPP:'/- Rosemont–La Petite-Patrie',MHM:'/- Mercier–Hochelaga-Maisonneuve',PMR:'/- Le Plateau–Mont-Royal',CDN:'/- Côte-des-Neiges–Notre-Dame-de-Grâce'};
 function spectrumUrl(arr,lat,lng){const cfg=SPECTRUM_CFG[arr];if(!cfg||!lat||!lng)return null;return 'https://spectrum.montreal.ca/connect/analyst/mobile/#/main?mapcfg='+encodeURIComponent(cfg)+'&lat='+lat+'&lon='+lng+'&zoom=17';}
 const cfg=()=>{try{return JSON.parse(localStorage.getItem('imsc_cfg')||'{}')}catch{return{}}};
@@ -414,7 +415,7 @@ function migrateProsp(e){
   if(e.zonageResult===undefined)e.zonageResult=null;
   return e;
 }
-function newProspEntry(o){return Object.assign({id:uid(),lat:null,lng:null,address:'',title:'',addressResolved:false,date:new Date().toISOString(),status:'todo',notes:[],photo:null,archived:false,checks:{evalweb:false,registre:false,zonage:false}},o)}
+function newProspEntry(o){return Object.assign({id:uid(),lat:null,lng:null,address:'',title:'',addressResolved:false,date:new Date().toISOString(),status:'todo',notes:[],photo:null,archived:false,checks:{evalweb:false,registre:false,zonage:false},evalwebResult:null},o)}
 function updateProsp(id,changes){const p=prosp();const i=p.findIndex(x=>x.id===id);if(i>=0){p[i]={...p[i],...changes};saveProsp(p)}}
 function upsertHist(e){const h=hist(),i=h.findIndex(x=>x.address===e.address);if(i>=0)h.splice(i,1);h.unshift(e);saveHist(h)}
 const $=id=>document.getElementById(id);
@@ -868,7 +869,9 @@ function renderProsp(){
       </div>
       ${notes.length?`<div class="prosp-notes">${notes.map((n,i)=>`<div class="pnote"><span class="pnote-ico">🎤</span><span class="pnote-txt">${esc(n)}</span><button class="pnote-del" data-noteidx="${i}" title="Supprimer cette note">✕</button></div>`).join('')}</div>`:''}
       <div class="prosp-checklist">
-        <a class="pc-item ${p.checks.evalweb?'checked':''}" href="${evalUrl}" target="_blank" data-check="evalweb"><span class="pc-ico">🏛️</span>EvalWeb${p.checks.evalweb?' ✓':''}</a>
+        ${p.evalwebResult
+  ?`<div class="pc-item checked" style="flex-direction:column;gap:2px;cursor:default;align-items:center;min-height:44px;justify-content:center"><span style="font-size:11px;font-weight:700">🏛️ ${fmtMoney(p.evalwebResult.valeurRole)}</span><span style="font-size:9px;opacity:.7">lot ${esc(p.evalwebResult.lot||'—')}</span></div>`
+  :`<button class="pc-item" data-evalweb="1"><span class="pc-ico">🏛️</span>EvalWeb</button>`}
         <a class="pc-item ${p.checks.registre?'checked':''}" href="${regUrl}" target="_blank" data-check="registre"><span class="pc-ico">📋</span>Registre${p.checks.registre?' ✓':''}</a>
         ${p.zonageResult
           ?`<div class="pc-item checked" style="flex-direction:column;gap:2px;cursor:default;align-items:center"><span style="font-size:11px;font-weight:700;line-height:1.2">🗺️ ${esc(p.zonageResult.zone)}</span><div style="display:flex;gap:6px;align-items:center"><a href="${esc(p.zonageResult.lien)}" target="_blank" style="font-size:9px;color:var(--accent);text-decoration:none;pointer-events:all">📄 Fiche</a>${(spectrumUrl(p.zonageResult.arr,p.lat,p.lng))?`<a href="${spectrumUrl(p.zonageResult.arr,p.lat,p.lng)}" target="_blank" style="font-size:9px;color:var(--accent);text-decoration:none;pointer-events:all">🌐 Carte</a>`:''}</div></div>`
@@ -900,6 +903,9 @@ function renderProsp(){
   // Zonage button → lookup via Worker
   el.querySelectorAll('[data-zonage]').forEach(b=>b.addEventListener('click',()=>{
     handleZonage(b.closest('.prosp-card').dataset.id);
+  }));
+  el.querySelectorAll('[data-evalweb]').forEach(b=>b.addEventListener('click',()=>{
+    handleEvalWeb(b.closest('.prosp-card').dataset.id);
   }));
   // Status buttons
   el.querySelectorAll('.psr-btn').forEach(b=>b.addEventListener('click',()=>{
@@ -983,6 +989,45 @@ async function handleZonage(id){
   }catch(e){
     if(btn){btn.disabled=false;btn.querySelector('.pc-ico').textContent='🗺️';}
     showToast('⚠️ '+(e.message||'Erreur zonage'));
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers EvalWeb
+// ─────────────────────────────────────────────────────────────────────────────
+function fmtMoney(n){
+  if(!n && n!==0) return '—';
+  return Number(n).toLocaleString('fr-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0});
+}
+
+function parseMontrealAddress(addr){
+  if(!addr) return null;
+  const m = addr.trim().match(/^(\d+[A-Za-z]?)\s+([A-Za-z\u00C0-\u024F\.]+)\s+(.+?)(?:\s*[,\u2014].*)?$/i);
+  if(!m) return null;
+  const gmap={av:'Avenue',ave:'Avenue',avenue:'Avenue',rue:'Rue',boul:'Boulevard',blvd:'Boulevard',boulevard:'Boulevard',ch:'Chemin',chemin:'Chemin',pl:'Place',place:'Place',cr:'Croissant',cres:'Croissant',sq:'Square',square:'Square'};
+  const gRaw=m[2].replace(/\.$/,'').toLowerCase();
+  const streetGeneric=gmap[gRaw]||(m[2].replace(/\.$/,''));
+  const streetName=m[3].trim().toUpperCase().replace(/[,\u2014].*$/,'').trim();
+  return {civicNumber:m[1],streetGeneric,streetName};
+}
+
+async function handleEvalWeb(id){
+  const p=prospects.find(x=>x.id===id);
+  if(!p) return;
+  const parsed=parseMontrealAddress(p.address||p.title||'');
+  if(!parsed){showToast('Adresse non reconnue — vérifiez le format');return;}
+  showToast('Recherche évaluation foncière…');
+  try{
+    const r=await fetch(EVALWEB_WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(parsed)});
+    const data=await r.json();
+    if(!r.ok||data.error) throw new Error(data.error||'Erreur');
+    p.evalwebResult=data;
+    p.checks.evalweb=true;
+    saveProspects();
+    renderAll();
+    showToast('Évaluation chargée ✓');
+  }catch(e){
+    showToast('Erreur EvalWeb: '+e.message);
   }
 }
 
