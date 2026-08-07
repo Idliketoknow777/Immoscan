@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#12161c">
+<title>DealMachine</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🏢</text></svg>">
+<style>
+:root{
+ --bg:#f5f6f8;--card:#fff;--ink:#12161c;--muted:#6b7280;--line:#e4e7ec;--soft:#f8f9fb;
+ --go:#0d9f6e;--cr:#d97706;--ng:#dc2626;--new:#3b5bdb;--accent:#12161c;
+ --sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom);
+}
+@media(prefers-color-scheme:dark){:root{
+ --bg:#0f1115;--card:#171a20;--ink:#e8eaed;--muted:#9099a6;--line:#262b33;--soft:#1d2128;--accent:#e8eaed;}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:0 14px calc(40px + var(--sab))}
+
+/* ---------- header ---------- */
+header{position:sticky;top:0;z-index:20;background:var(--bg);padding-top:calc(12px + var(--sat));border-bottom:1px solid var(--line)}
+.hrow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+h1{font-size:19px;margin:0;letter-spacing:-.02em}
+h1 small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;letter-spacing:0;margin-top:2px}
+.btn{background:var(--accent);color:var(--bg);border:none;border-radius:8px;padding:8px 13px;font:600 12.5px/1 inherit;cursor:pointer;white-space:nowrap}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:7px;margin:12px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:9px 11px}
+.kpi .v{font-size:19px;font-weight:700;letter-spacing:-.02em}
+.kpi .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
+.kpi.g .v{color:var(--go)}.kpi.c .v{color:var(--cr)}.kpi.n .v{color:var(--ng)}.kpi.b .v{color:var(--new)}
+
+.bar{display:flex;gap:6px;overflow-x:auto;padding:0 0 11px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.bar::-webkit-scrollbar{display:none}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:7px 13px;font-size:12.5px;cursor:pointer;white-space:nowrap;user-select:none;color:var(--ink)}
+.chip.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.tools{display:flex;gap:6px;padding-bottom:11px;flex-wrap:wrap}
+select,input[type=search],input[type=text]{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:13px inherit;color:var(--ink);font-family:inherit}
+input[type=search]{flex:1;min-width:130px}
+
+/* ---------- cartes ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:11px;margin-top:14px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px 14px 12px;cursor:pointer;position:relative;overflow:hidden;transition:.12s}
+.c:active{transform:scale(.99)}
+@media(hover:hover){.c:hover{box-shadow:0 4px 16px rgba(16,24,40,.08);border-color:#c9ced6}}
+.c::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ng)}
+.c.go::before{background:var(--go)}.c.cr::before{background:var(--cr)}.c.na::before{background:#9ca3af}
+.c.unseen{box-shadow:inset 0 0 0 1.5px var(--new)}
+.dot{position:absolute;top:14px;left:9px;width:6px;height:6px;border-radius:50%;background:var(--new)}
+.pr{font-size:19px;font-weight:700;letter-spacing:-.02em}
+.ad{font-size:13.5px;font-weight:600;margin-top:2px;padding-right:46px}
+.lo{font-size:12px;color:var(--muted)}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.t{font-size:10.5px;padding:2.5px 7px;border-radius:5px;background:var(--soft);color:var(--muted)}
+.t.mv{background:#fde8e8;color:var(--ng);font-weight:600}
+.t.up{background:#fdf0dc;color:var(--cr);font-weight:600}
+.t.nw{background:#e6ecfd;color:var(--new);font-weight:600}
+@media(prefers-color-scheme:dark){.t.mv{background:#3a1e1e}.t.up{background:#3a2c14}.t.nw{background:#1c2540}}
+.mx{display:flex;gap:13px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line);flex-wrap:wrap}
+.mx .n{font-size:13.5px;font-weight:700}
+.mx .k{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.sc{position:absolute;top:12px;right:12px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13.5px;background:#fde8e8;color:var(--ng)}
+.sc.go{background:#dff5ec;color:var(--go)}.sc.cr{background:#fdf0dc;color:var(--cr)}.sc.na{background:var(--soft);color:#9ca3af;font-size:10px}
+@media(prefers-color-scheme:dark){.sc{background:#3a1e1e}.sc.go{background:#12312a}.sc.cr{background:#3a2c14}}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:44px 16px}
+
+/* ---------- fiche ---------- */
+.ov{position:fixed;inset:0;background:rgba(10,13,18,.55);z-index:60;display:none;overflow-y:auto;padding:20px}
+.ov.on{display:block}
+@media(max-width:640px){.ov{padding:0}}
+.sheet{max-width:760px;margin:0 auto;background:var(--card);border-radius:15px;padding:22px}
+@media(max-width:640px){.sheet{border-radius:16px 16px 0 0;margin-top:44px;min-height:calc(100vh - 44px);padding:20px 16px calc(30px + var(--sab))}}
+.cl{float:right;background:var(--soft);border:none;color:var(--muted);width:32px;height:32px;border-radius:50%;font-size:19px;cursor:pointer;line-height:1}
+.sheet h2{margin:0;font-size:18px;letter-spacing:-.02em;padding-right:40px}
+.vd{display:inline-block;padding:5px 12px;border-radius:7px;font-weight:700;font-size:12.5px;margin:11px 0}
+.vd.NOGO{background:#fde8e8;color:var(--ng)}.vd.CR{background:#fdf0dc;color:var(--cr)}
+.vd.GO{background:#dff5ec;color:var(--go)}.vd.NA{background:var(--soft);color:var(--muted)}
+@media(prefers-color-scheme:dark){.vd.NOGO{background:#3a1e1e}.vd.CR{background:#3a2c14}.vd.GO{background:#12312a}}
+.rats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:7px;margin:12px 0}
+.rats div{background:var(--soft);border-radius:9px;padding:9px 11px}
+.rats .n{font-size:15px;font-weight:700}.rats .k{font-size:10px;color:var(--muted);text-transform:uppercase}
+.sec{margin-top:17px}
+.sec h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 7px}
+.note{background:var(--soft);border-radius:9px;padding:11px 13px;font-size:13px;line-height:1.55}
+.tl{border-left:2px solid var(--line);margin-left:5px;padding-left:14px}
+.tl .e{position:relative;padding-bottom:13px;font-size:12.5px}
+.tl .e::before{content:"";position:absolute;left:-20px;top:5px;width:8px;height:8px;border-radius:50%;background:var(--line)}
+.tl .e.chg::before{background:var(--ng)}
+.tl .d{font-weight:600;font-size:12px}
+.tl .m{color:var(--muted)}
+a.lk{display:inline-block;margin-top:15px;background:var(--accent);color:var(--bg);text-decoration:none;padding:10px 17px;border-radius:9px;font-size:13px;font-weight:600}
+.foot{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted)}
+
+/* ---------- écran de chargement / réglages ---------- */
+.gate{max-width:520px;margin:8vh auto;background:var(--card);border:1px solid var(--line);border-radius:15px;padding:26px}
+.gate h2{margin:0 0 6px;font-size:20px;letter-spacing:-.02em}
+.gate p{color:var(--muted);font-size:13.5px;line-height:1.55}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:26px 16px;text-align:center;color:var(--muted);font-size:13px;margin:14px 0;cursor:pointer}
+.drop.hot{border-color:var(--new);color:var(--new)}
+.st{font-size:12.5px;color:var(--muted);margin-top:10px}
+.err{background:#fde8e8;color:#7f1d1d;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-top:10px}
+@media(prefers-color-scheme:dark){.err{background:#3a1e1e;color:#fca5a5}}
+</style>
+</head>
+<body>
+
+<!-- ================= PORTE D'ENTRÉE ================= -->
+<div id="gate" class="wrap"><div class="gate">
+  <h2>DealMachine</h2>
+  <p>Tout ton historique de deal flow, sur téléphone comme sur ordi. Les données restent dans ton Drive privé — cette page ne fait que les lire.</p>
+
+  <div id="driveBox">
+    <button class="btn" id="btnDrive" style="width:100%;padding:12px">Se connecter à Google Drive</button>
+    <div class="st">L'app cherche tous les fichiers <code>DealMachine_Master_Snapshot_*.csv</code> et reconstruit l'historique complet.</div>
+  </div>
+
+  <div class="drop" id="drop">
+    …ou dépose ici tes fichiers CSV (ou clique pour les choisir)
+    <input type="file" id="file" multiple accept=".csv" hidden>
+  </div>
+
+  <div id="gateSt" class="st"></div>
+  <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+    <div class="st" style="margin-bottom:6px">Identifiant client Google OAuth (à coller une seule fois) :</div>
+    <input type="text" id="cid" placeholder="xxxxx.apps.googleusercontent.com" style="width:100%">
+  </div>
+</div></div>
+
+<!-- ================= APP ================= -->
+<div id="app" style="display:none">
+<header><div class="wrap" style="padding-bottom:0">
+  <div class="hrow">
+    <h1>DealMachine<small id="hsub"></small></h1>
+    <div style="display:flex;gap:6px">
+      <button class="btn ghost" id="btnReload">Recharger</button>
+      <button class="btn ghost" id="btnOut">⚙</button>
+    </div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="bar" id="chips">
+    <span class="chip on" data-f="all">Tout</span>
+    <span class="chip" data-f="UNSEEN">Depuis ma dernière visite</span>
+    <span class="chip" data-f="MOVE">A bougé</span>
+    <span class="chip" data-f="DOWN">📉 Baisses de prix</span>
+    <span class="chip" data-f="GO">Go</span>
+    <span class="chip" data-f="CR">À creuser</span>
+    <span class="chip" data-f="NOGO">No-Go</span>
+    <span class="chip" data-f="ACTIVE">Encore actives</span>
+  </div>
+  <div class="tools">
+    <select id="day"></select>
+    <select id="sort">
+      <option value="date">Trier : vu récemment</option>
+      <option value="score">Score ↓</option>
+      <option value="mrb">MRB ↑ (meilleur multiplicateur)</option>
+      <option value="ppp">Prix / porte ↑</option>
+      <option value="prix">Prix ↓</option>
+      <option value="delta">Plus forte baisse ↓</option>
+    </select>
+    <select id="src"><option value="">Toutes sources</option></select>
+    <select id="sec"><option value="">Tous secteurs</option></select>
+    <input type="search" id="q" placeholder="Adresse, secteur, n° d'inscription…">
+  </div>
+</div></header>
+
+<div class="wrap">
+  <div class="grid" id="grid"></div>
+  <div class="foot" id="foot"></div>
+</div>
+</div>
+
+<div class="ov" id="ov"><div class="sheet" id="sheet"></div></div>
+
+<script>
+/* ============================================================
+   DealMachine — historique consolidé, lecture seule
+   Les CSV du run quotidien sont fusionnés côté navigateur :
+   aucune modification à la tâche planifiée n'est requise.
+   ============================================================ */
+const LS={cid:'dm_cid',tok:'dm_tok',cache:'dm_cache',visit:'dm_visit'};
+const SCOPE='https://www.googleapis.com/auth/drive.readonly';
+// ID client OAuth déjà en production sur ImmoScan (même domaine GitHub Pages → origine déjà autorisée)
+const DEFAULT_CID='791511316524-c82bmsntb91lgj6ji3egi39lqio0p4e9.apps.googleusercontent.com';
+let DB=[],DAYS=[],lastVisit=+(localStorage.getItem(LS.visit)||0),thisVisit=Date.now();
+
+/* ---------- utilitaires ---------- */
+const num=v=>{if(v==null)return null;const s=String(v).replace(/[^\d.,-]/g,'').replace(/\s/g,'').replace(',','.');
+  if(!s||isNaN(parseFloat(s)))return null;return parseFloat(s);};
+const money=n=>n==null?"ND":Math.round(n).toLocaleString('fr-CA').replace(/[\s, ]/g,' ')+" $";
+const dec=(n,d=2)=>n==null?"ND":n.toFixed(d).replace('.',',');
+const esc=s=>String(s??'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+const vKey=v=>{const s=(v||'').toUpperCase();
+  if(s.includes('CREUSER'))return'CR'; if(s.startsWith('GO'))return'GO';
+  if(s.includes('CAPTURER')||s.includes('HORS')||s==='ND'||!s)return'NA'; return'NOGO';};
+const vCls=k=>k==='CR'?'cr':k==='GO'?'go':k==='NA'?'na':'';
+
+/* ---------- parsing CSV (séparateur ;) ---------- */
+function parseCSV(text,fallbackDate){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(!lines.length)return[];
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    let p=lines[i].split(';');
+    if(p.length<11)continue;
+    // La note de suivi (col. 2) est le seul champ libre : on y recolle les ';' parasites.
+    if(p.length>11)p=[p[0],p[1],p.slice(2,p.length-8).join(';'),...p.slice(p.length-8)];
+    const [id,src,st,adr,loc,prix,portes,rev,score,verdict,date]=p.map(x=>x.trim());
+    if(!id)continue;
+    rows.push({id,src,st,adr,loc,prix:num(prix),portes:num(portes),rev:num(rev),
+      score:num(score),verdict:verdict||'ND',date:(date&&/\d{4}-\d{2}-\d{2}/.test(date))?date:fallbackDate});
+  }
+  return rows;
+}
+
+/* ---------- consolidation : 1 entrée par inscription ---------- */
+function build(files){           // files = [{name, text}]
+  const days=new Set(), byId=new Map();
+  files.forEach(f=>{
+    const m=f.name.match(/(\d{4}-\d{2}-\d{2})/);
+    const fd=m?m[1]:null;
+    parseCSV(f.text,fd).forEach(r=>{
+      if(!r.date)return; days.add(r.date);
+      const k=r.id==='ND'?('ND::'+r.adr):r.id;
+      if(!byId.has(k))byId.set(k,{key:k,snaps:[]});
+      byId.get(k).snaps.push(r);
+    });
+  });
+  DAYS=[...days].sort().reverse();
+  DB=[...byId.values()].map(e=>{
+    e.snaps.sort((a,b)=>a.date.localeCompare(b.date));
+    const last=e.snaps[e.snaps.length-1], first=e.snaps[0];
+    // dernière valeur connue non nulle pour chaque champ
+    const pick=f=>{for(let i=e.snaps.length-1;i>=0;i--)if(e.snaps[i][f]!=null&&e.snaps[i][f]!=='')return e.snaps[i][f];return null;};
+    Object.assign(e,{id:last.id,src:last.src,adr:pick('adr'),loc:pick('loc'),
+      prix:pick('prix'),portes:pick('portes'),rev:pick('rev'),score:pick('score'),
+      verdict:last.verdict,st:last.st,seen:last.date,firstSeen:first.date,
+      vk:vKey(last.verdict),days:e.snaps.length});
+    e.mrb=(e.prix&&e.rev)?e.prix/e.rev:null;
+    e.ppp=(e.prix&&e.portes)?e.prix/e.portes:null;
+    // Historique de prix : on ne retient qu'un changement réel de valeur.
+    const hist=[];
+    e.snaps.forEach(s=>{if(s.prix!=null&&(!hist.length||hist[hist.length-1].prix!==s.prix))hist.push({date:s.date,prix:s.prix});});
+    e.priceHist=hist;
+    e.moved=hist.length>1;
+    if(e.moved){const a=hist[hist.length-2].prix,b=hist[hist.length-1].prix;
+      e.delta=b-a; e.deltaPct=(b-a)/a*100; e.moveDate=hist[hist.length-1].date;}
+    else e.delta=e.deltaPct=0;
+    // Changement de verdict d'un passage à l'autre
+    const vs=e.snaps.map(s=>vKey(s.verdict));
+    e.verdictChanged=vs.length>1&&vs[vs.length-1]!==vs[vs.length-2];
+    e.isNew=e.snaps.length===1||e.firstSeen===e.seen;
+    e.unseen=new Date(e.seen+'T23:59:59').getTime()>lastVisit;
+    return e;
+  });
+  DB.sort((a,b)=>b.seen.localeCompare(a.seen));
+}
+
+/* ---------- chargement : Google Drive ---------- */
+function driveLoad(token){
+  status("Recherche des fichiers dans Drive…");
+  const q=encodeURIComponent("name contains 'DealMachine_Master_Snapshot' and trashed=false");
+  return fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=1000`,
+      {headers:{Authorization:'Bearer '+token}})
+    .then(r=>{if(!r.ok)throw new Error('Drive '+r.status);return r.json()})
+    .then(j=>{
+      const fs=(j.files||[]).filter(f=>/\.csv$/i.test(f.name));
+      if(!fs.length)throw new Error("Aucun fichier DealMachine_Master_Snapshot_*.csv trouvé dans ton Drive.");
+      status(`${fs.length} fichiers trouvés — téléchargement…`);
+      return Promise.all(fs.map(f=>
+        fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,{headers:{Authorization:'Bearer '+token}})
+          .then(r=>r.text()).then(text=>({name:f.name,text}))));
+    })
+    .then(files=>{localStorage.setItem(LS.cache,JSON.stringify(files));start(files);});
+}
+function connectDrive(){
+  const cid=(document.getElementById('cid').value||localStorage.getItem(LS.cid)||DEFAULT_CID).trim();
+  if(!cid){status("Colle d'abord ton identifiant client Google OAuth ci-dessous.",1);return;}
+  localStorage.setItem(LS.cid,cid);
+  if(!window.google||!google.accounts){status("Bibliothèque Google non chargée — vérifie ta connexion.",1);return;}
+  google.accounts.oauth2.initTokenClient({client_id:cid,scope:SCOPE,
+    callback:t=>{if(t.error){status("Connexion refusée : "+t.error,1);return;}
+      localStorage.setItem(LS.tok,t.access_token);
+      driveLoad(t.access_token).catch(e=>status(e.message,1));}
+  }).requestAccessToken();
+}
+
+/* ---------- chargement : fichiers locaux ---------- */
+function localLoad(list){
+  const files=[...list].filter(f=>/\.csv$/i.test(f.name));
+  if(!files.length){status("Aucun fichier .csv dans la sélection.",1);return;}
+  Promise.all(files.map(f=>f.text().then(text=>({name:f.name,text}))))
+    .then(fs=>{localStorage.setItem(LS.cache,JSON.stringify(fs));start(fs);});
+}
+function status(m,isErr){const el=document.getElementById('gateSt');
+  el.innerHTML=isErr?`<div class="err">${esc(m)}</div>`:esc(m);}
+
+/* ---------- démarrage ---------- */
+function start(files){
+  build(files);
+  if(!DB.length){status("Fichiers lus, mais aucune ligne exploitable.",1);return;}
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='';
+  const dayS=document.getElementById('day');
+  dayS.innerHTML='<option value="">Toutes les journées</option>'+
+    DAYS.map(d=>`<option value="${d}">Journée du ${d}</option>`).join('');
+  fillOpt('src',[...new Set(DB.map(e=>e.src).filter(Boolean))].sort(),'Toutes sources');
+  fillOpt('sec',[...new Set(DB.map(e=>e.loc).filter(Boolean))].sort(),'Tous secteurs');
+  document.getElementById('hsub').textContent=
+    `${DB.length} inscriptions · ${DAYS.length} journées · ${DAYS[DAYS.length-1]} → ${DAYS[0]}`;
+  localStorage.setItem(LS.visit,thisVisit);
+  kpis();render();
+}
+function fillOpt(id,vals,label){
+  document.getElementById(id).innerHTML=`<option value="">${label}</option>`+
+    vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+}
+
+function kpis(){
+  const act=DB.filter(e=>e.seen===DAYS[0]);
+  const down=DB.filter(e=>e.deltaPct<0), unseen=DB.filter(e=>e.unseen);
+  const sc=DB.filter(e=>e.score!=null);
+  const m=[["Inscriptions",DB.length,""],["Journées",DAYS.length,""],
+   ["Nouveau pour toi",unseen.length,"b"],["Ont bougé",DB.filter(e=>e.moved).length,""],
+   ["📉 Baisses",down.length,down.length?"g":""],
+   ["Go",DB.filter(e=>e.vk==='GO').length,"g"],["À creuser",DB.filter(e=>e.vk==='CR').length,"c"],
+   ["No-Go",DB.filter(e=>e.vk==='NOGO').length,"n"],
+   ["Score moyen",sc.length?Math.round(sc.reduce((a,b)=>a+b.score,0)/sc.length):"—",""],
+   ["Vues au dernier run",act.length,""]];
+  document.getElementById('kpis').innerHTML=m.map(([l,v,c])=>
+    `<div class="kpi ${c}"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+}
+
+let filt='all';
+function render(){
+  const q=document.getElementById('q').value.toLowerCase().trim();
+  const day=document.getElementById('day').value, src=document.getElementById('src').value,
+        sec=document.getElementById('sec').value, s=document.getElementById('sort').value;
+  let a=DB.filter(e=>{
+    if(day&&!e.snaps.some(x=>x.date===day))return false;
+    if(src&&e.src!==src)return false;
+    if(sec&&e.loc!==sec)return false;
+    if(filt==='UNSEEN'&&!e.unseen)return false;
+    if(filt==='MOVE'&&!e.moved)return false;
+    if(filt==='DOWN'&&!(e.deltaPct<0))return false;
+    if(filt==='ACTIVE'&&e.seen!==DAYS[0])return false;
+    if(['GO','CR','NOGO'].includes(filt)&&e.vk!==filt)return false;
+    if(q&&!(e.adr+' '+e.loc+' '+e.id+' '+e.src).toLowerCase().includes(q))return false;
+    return true;});
+  a.sort((x,y)=>{
+    if(s==='score')return (y.score??-1)-(x.score??-1);
+    if(s==='mrb')return (x.mrb??1e9)-(y.mrb??1e9);
+    if(s==='ppp')return (x.ppp??1e12)-(y.ppp??1e12);
+    if(s==='prix')return (y.prix??-1)-(x.prix??-1);
+    if(s==='delta')return (x.deltaPct??0)-(y.deltaPct??0);
+    return y.seen.localeCompare(x.seen)||(y.score??-1)-(x.score??-1);});
+  document.getElementById('grid').innerHTML = a.length ? a.map(e=>{
+    const k=vCls(e.vk);
+    const tags=[`<span class="t">${esc(e.src)} · ${esc(e.id)}</span>`];
+    if(e.unseen)tags.push('<span class="t nw">nouveau pour toi</span>');
+    if(e.deltaPct<0)tags.push(`<span class="t mv">📉 ${dec(e.deltaPct,1)} %</span>`);
+    else if(e.deltaPct>0)tags.push(`<span class="t up">📈 +${dec(e.deltaPct,1)} %</span>`);
+    if(e.verdictChanged)tags.push('<span class="t up">verdict changé</span>');
+    return `<div class="c ${k} ${e.unseen?'unseen':''}" data-k="${esc(e.key)}">
+      ${e.unseen?'<span class="dot"></span>':''}
+      <div class="sc ${k}">${e.score??'ND'}</div>
+      <div class="pr">${money(e.prix)}</div>
+      <div class="ad">${esc(e.adr||'Adresse ND')}</div>
+      <div class="lo">${esc(e.loc||'')}</div>
+      <div class="tags">${tags.join('')}</div>
+      <div class="mx">
+        <div><div class="n">${e.portes??'ND'}</div><div class="k">portes</div></div>
+        <div><div class="n">${dec(e.mrb)}</div><div class="k">MRB</div></div>
+        <div><div class="n">${e.ppp?Math.round(e.ppp/1000)+' k$':'ND'}</div><div class="k">/ porte</div></div>
+        <div><div class="n">${e.days}</div><div class="k">passages</div></div>
+      </div></div>`;}).join('')
+    : `<div class="empty">Aucune inscription ne correspond à ce filtre.</div>`;
+  document.getElementById('foot').innerHTML=
+    `${a.length} inscription${a.length>1?'s':''} affichée${a.length>1?'s':''} sur ${DB.length}. `+
+    `TGA et prix/porte reposent sur le <em>prix demandé</em>, jamais sur des ventes conclues — indicatifs seulement. `+
+    `Les champs absents s'affichent « ND » : aucune donnée n'est inventée.`;
+}
+
+/* ---------- fiche détail ---------- */
+function open_(key){
+  const e=DB.find(x=>x.key===key); if(!e)return;
+  const tl=e.snaps.map((s,i)=>{
+    const prev=e.snaps[i-1];
+    const chg=prev&&(prev.prix!==s.prix||prev.rev!==s.rev||vKey(prev.verdict)!==vKey(s.verdict));
+    let d='';
+    if(prev&&prev.prix!==s.prix&&prev.prix!=null&&s.prix!=null){
+      const pc=(s.prix-prev.prix)/prev.prix*100;
+      d=`<div class="m"><strong>${pc<0?'📉':'📈'} ${money(prev.prix)} → ${money(s.prix)} (${pc>0?'+':''}${dec(pc,1)} %)</strong></div>`;}
+    return `<div class="e ${chg?'chg':''}"><div class="d">${s.date} — ${esc(s.verdict)}${s.score!=null?' ('+s.score+')':''}</div>
+      ${d}<div class="m">${esc(s.st||'')}</div></div>`;}).reverse().join('');
+  document.getElementById('sheet').innerHTML=`
+    <button class="cl" onclick="closeSheet()">&times;</button>
+    <h2>${esc(e.adr||'Adresse ND')}</h2>
+    <div style="color:var(--muted);font-size:12.5px;margin-top:3px">${esc(e.loc||'')} · ${esc(e.src)} · n° ${esc(e.id)}</div>
+    <div class="vd ${e.vk}">${esc(e.verdict)}${e.score!=null?' — '+e.score+'/100':''}</div>
+    <div class="rats">
+      <div><div class="n">${money(e.prix)}</div><div class="k">Prix demandé</div></div>
+      <div><div class="n">${money(e.rev)}</div><div class="k">Revenus bruts</div></div>
+      <div><div class="n">${e.portes??'ND'}</div><div class="k">Portes</div></div>
+      <div><div class="n">${dec(e.mrb)}</div><div class="k">MRB</div></div>
+      <div><div class="n">${e.ppp?Math.round(e.ppp/1000)+' k$':'ND'}</div><div class="k">Prix / porte</div></div>
+      <div><div class="n">${e.days}</div><div class="k">Passages</div></div>
+    </div>
+    ${e.moved?`<div class="sec"><h3>Mouvement de prix</h3><div class="note">
+      ${money(e.priceHist[0].prix)} le ${e.priceHist[0].date} → <strong>${money(e.prix)}</strong> le ${e.moveDate}
+      (${e.deltaPct>0?'+':''}${dec(e.deltaPct,1)} % sur le dernier changement)</div></div>`:''}
+    <div class="sec"><h3>Historique (${e.snaps.length} passages · ${e.firstSeen} → ${e.seen})</h3><div class="tl">${tl}</div></div>
+    ${/^\d+$/.test(e.id)?`<a class="lk" href="https://www.centris.ca/fr/propriete~a-vendre~/${e.id}" target="_blank" rel="noopener">Ouvrir la fiche Centris ↗</a>`:''}`;
+  document.getElementById('ov').classList.add('on');
+  document.body.style.overflow='hidden';
+}
+function closeSheet(){document.getElementById('ov').classList.remove('on');document.body.style.overflow='';}
+
+/* ---------- événements ---------- */
+document.getElementById('grid').addEventListener('click',ev=>{
+  const c=ev.target.closest('.c'); if(c)open_(c.dataset.k);});
+document.getElementById('chips').addEventListener('click',ev=>{
+  const c=ev.target.closest('.chip'); if(!c)return;
+  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on'); filt=c.dataset.f; render();});
+['day','sort','src','sec'].forEach(id=>document.getElementById(id).onchange=render);
+document.getElementById('q').oninput=render;
+document.getElementById('ov').onclick=ev=>{if(ev.target.id==='ov')closeSheet()};
+document.onkeydown=ev=>{if(ev.key==='Escape')closeSheet()};
+document.getElementById('btnDrive').onclick=connectDrive;
+document.getElementById('btnReload').onclick=()=>{
+  const t=localStorage.getItem(LS.tok);
+  if(t)driveLoad(t).catch(()=>{localStorage.removeItem(LS.tok);location.reload();});
+  else location.reload();};
+document.getElementById('btnOut').onclick=()=>{
+  if(confirm("Effacer les données en cache sur cet appareil?")){
+    [LS.tok,LS.cache].forEach(k=>localStorage.removeItem(k));location.reload();}};
+
+const drop=document.getElementById('drop'),file=document.getElementById('file');
+drop.onclick=()=>file.click();
+file.onchange=e=>localLoad(e.target.files);
+['dragover','dragenter'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add('hot')}));
+['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('hot')}));
+drop.addEventListener('drop',e=>localLoad(e.dataTransfer.files));
+
+/* ---------- amorçage ---------- */
+(function(){
+  document.getElementById('cid').value=localStorage.getItem(LS.cid)||DEFAULT_CID;
+  const cache=localStorage.getItem(LS.cache);
+  if(cache){try{start(JSON.parse(cache));
+    const t=localStorage.getItem(LS.tok);
+    if(t)driveLoad(t).catch(()=>{});   // rafraîchit en arrière-plan
+    return;}catch(e){}}
+  status("Connecte-toi à Drive, ou dépose tes CSV pour essayer tout de suite.");
+})();
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</body>
+</html>
