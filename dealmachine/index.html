@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#12161c">
 <title>DealMachine</title>
+<script>/* thème appliqué avant le rendu pour éviter le flash */
+(function(){var t=localStorage.getItem('dm_theme')||'auto';
+var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches);
+document.documentElement.setAttribute('data-theme',d?'dark':'light');})();</script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🏢</text></svg>">
 <style>
 :root{
@@ -12,8 +16,8 @@
  --go:#0d9f6e;--cr:#d97706;--ng:#dc2626;--new:#3b5bdb;--accent:#12161c;
  --sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom);
 }
-@media(prefers-color-scheme:dark){:root{
- --bg:#0f1115;--card:#171a20;--ink:#e8eaed;--muted:#9099a6;--line:#262b33;--soft:#1d2128;--accent:#e8eaed;}}
+:root[data-theme="dark"]{
+ --bg:#0f1115;--card:#171a20;--ink:#e8eaed;--muted:#9099a6;--line:#262b33;--soft:#1d2128;--accent:#e8eaed;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 .wrap{max-width:1280px;margin:0 auto;padding:0 14px calc(40px + var(--sab))}
@@ -31,6 +35,27 @@ h1 small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;lette
 .kpi .v{font-size:19px;font-weight:700;letter-spacing:-.02em}
 .kpi .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
 .kpi.g .v{color:var(--go)}.kpi.c .v{color:var(--cr)}.kpi.n .v{color:var(--ng)}.kpi.b .v{color:var(--new)}
+.kpi[data-f]{cursor:pointer}
+.kpi[data-f]:active{transform:scale(.98)}
+@media(hover:hover){.kpi[data-f]:hover{border-color:#b9bfc9}}
+.kpi.sel{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ---- barre de recherche toujours visible + repli mobile ---- */
+.srow{display:flex;gap:6px;padding-bottom:11px}
+.srow input[type=search]{flex:1}
+.mtoggle{display:none;background:var(--card);border:1px solid var(--line);color:var(--ink);
+ border-radius:8px;padding:8px 12px;font:600 12.5px inherit;cursor:pointer;white-space:nowrap}
+.mtoggle .n{background:var(--new);color:#fff;border-radius:9px;padding:0 5px;margin-left:5px;font-size:10.5px}
+@media(max-width:760px){
+  .mtoggle{display:inline-flex;align-items:center}
+  .kpis,.bar,.tools{display:none}
+  header.open .kpis{display:grid}
+  header.open .bar{display:flex}
+  header.open .tools{display:flex}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:6px;margin:10px 0}
+  .kpi{padding:8px 9px}.kpi .v{font-size:17px}
+  h1{font-size:17px}
+}
 
 .bar{display:flex;gap:6px;overflow-x:auto;padding:0 0 11px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .bar::-webkit-scrollbar{display:none}
@@ -57,13 +82,13 @@ input[type=search]{flex:1;min-width:130px}
 .t.mv{background:#fde8e8;color:var(--ng);font-weight:600}
 .t.up{background:#fdf0dc;color:var(--cr);font-weight:600}
 .t.nw{background:#e6ecfd;color:var(--new);font-weight:600}
-@media(prefers-color-scheme:dark){.t.mv{background:#3a1e1e}.t.up{background:#3a2c14}.t.nw{background:#1c2540}}
+[data-theme="dark"] .t.mv{background:#3a1e1e}[data-theme="dark"] .t.up{background:#3a2c14}[data-theme="dark"] .t.nw{background:#1c2540}
 .mx{display:flex;gap:13px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line);flex-wrap:wrap}
 .mx .n{font-size:13.5px;font-weight:700}
 .mx .k{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .sc{position:absolute;top:12px;right:12px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13.5px;background:#fde8e8;color:var(--ng)}
 .sc.go{background:#dff5ec;color:var(--go)}.sc.cr{background:#fdf0dc;color:var(--cr)}.sc.na{background:var(--soft);color:#9ca3af;font-size:10px}
-@media(prefers-color-scheme:dark){.sc{background:#3a1e1e}.sc.go{background:#12312a}.sc.cr{background:#3a2c14}}
+[data-theme="dark"] .sc{background:#3a1e1e}[data-theme="dark"] .sc.go{background:#12312a}[data-theme="dark"] .sc.cr{background:#3a2c14}
 .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:44px 16px}
 
 /* ---------- fiche ---------- */
@@ -77,7 +102,7 @@ input[type=search]{flex:1;min-width:130px}
 .vd{display:inline-block;padding:5px 12px;border-radius:7px;font-weight:700;font-size:12.5px;margin:11px 0}
 .vd.NOGO{background:#fde8e8;color:var(--ng)}.vd.CR{background:#fdf0dc;color:var(--cr)}
 .vd.GO{background:#dff5ec;color:var(--go)}.vd.NA{background:var(--soft);color:var(--muted)}
-@media(prefers-color-scheme:dark){.vd.NOGO{background:#3a1e1e}.vd.CR{background:#3a2c14}.vd.GO{background:#12312a}}
+[data-theme="dark"] .vd.NOGO{background:#3a1e1e}[data-theme="dark"] .vd.CR{background:#3a2c14}[data-theme="dark"] .vd.GO{background:#12312a}
 .rats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:7px;margin:12px 0}
 .rats div{background:var(--soft);border-radius:9px;padding:9px 11px}
 .rats .n{font-size:15px;font-weight:700}.rats .k{font-size:10px;color:var(--muted);text-transform:uppercase}
@@ -101,7 +126,7 @@ a.lk{display:inline-block;margin-top:15px;background:var(--accent);color:var(--b
 .drop.hot{border-color:var(--new);color:var(--new)}
 .st{font-size:12.5px;color:var(--muted);margin-top:10px}
 .err{background:#fde8e8;color:#7f1d1d;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-top:10px}
-@media(prefers-color-scheme:dark){.err{background:#3a1e1e;color:#fca5a5}}
+[data-theme="dark"] .err{background:#3a1e1e;color:#fca5a5}
 </style>
 </head>
 <body>
@@ -135,8 +160,12 @@ a.lk{display:inline-block;margin-top:15px;background:var(--accent);color:var(--b
     <h1>DealMachine<small id="hsub"></small></h1>
     <div style="display:flex;gap:6px">
       <button class="btn ghost" id="btnReload">Recharger</button>
-      <button class="btn ghost" id="btnOut">⚙</button>
+      <button class="btn ghost" id="btnSet">⚙</button>
     </div>
+  </div>
+  <div class="srow">
+    <input type="search" id="q" placeholder="Adresse, secteur, n° d'inscription…">
+    <button class="mtoggle" id="mtoggle">Filtres<span class="n" id="mcount"></span></button>
   </div>
   <div class="kpis" id="kpis"></div>
   <div class="bar" id="chips">
@@ -161,7 +190,6 @@ a.lk{display:inline-block;margin-top:15px;background:var(--accent);color:var(--b
     </select>
     <select id="src"><option value="">Toutes sources</option></select>
     <select id="sec"><option value="">Tous secteurs</option></select>
-    <input type="search" id="q" placeholder="Adresse, secteur, n° d'inscription…">
   </div>
 </div></header>
 
@@ -321,15 +349,28 @@ function kpis(){
   const act=DB.filter(e=>e.seen===DAYS[0]);
   const down=DB.filter(e=>e.deltaPct<0), unseen=DB.filter(e=>e.unseen);
   const sc=DB.filter(e=>e.score!=null);
-  const m=[["Inscriptions",DB.length,""],["Journées",DAYS.length,""],
-   ["Nouveau pour toi",unseen.length,"b"],["Ont bougé",DB.filter(e=>e.moved).length,""],
-   ["📉 Baisses",down.length,down.length?"g":""],
-   ["Go",DB.filter(e=>e.vk==='GO').length,"g"],["À creuser",DB.filter(e=>e.vk==='CR').length,"c"],
-   ["No-Go",DB.filter(e=>e.vk==='NOGO').length,"n"],
-   ["Score moyen",sc.length?Math.round(sc.reduce((a,b)=>a+b.score,0)/sc.length):"—",""],
-   ["Vues au dernier run",act.length,""]];
-  document.getElementById('kpis').innerHTML=m.map(([l,v,c])=>
-    `<div class="kpi ${c}"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+  const m=[["Inscriptions",DB.length,"","all"],["Journées",DAYS.length,"",null],
+   ["Nouveau pour toi",unseen.length,"b","UNSEEN"],["Ont bougé",DB.filter(e=>e.moved).length,"","MOVE"],
+   ["📉 Baisses",down.length,down.length?"g":"","DOWN"],
+   ["Go",DB.filter(e=>e.vk==='GO').length,"g","GO"],["À creuser",DB.filter(e=>e.vk==='CR').length,"c","CR"],
+   ["No-Go",DB.filter(e=>e.vk==='NOGO').length,"n","NOGO"],
+   ["Vues au dernier run",act.length,"","ACTIVE"]];
+  document.getElementById('kpis').innerHTML=m.map(([l,v,c,f])=>
+    `<div class="kpi ${c} ${f===filt?'sel':''}" ${f?`data-f="${f}"`:''}><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+}
+/* Applique un filtre depuis n'importe quelle source (chip ou tuile) et garde tout synchronisé. */
+function setFilter(f,scroll){
+  filt=f;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.f===f));
+  document.querySelectorAll('.kpi[data-f]').forEach(k=>k.classList.toggle('sel',k.dataset.f===f));
+  render();
+  if(scroll!==false)toGrid();
+}
+/* Ramène la grille sous l'en-tête fixe — sans ça, sur téléphone, le résultat reste hors champ. */
+function toGrid(){
+  const h=document.querySelector('header').offsetHeight;
+  const y=document.getElementById('grid').getBoundingClientRect().top+scrollY-h-8;
+  scrollTo({top:Math.max(0,y),behavior:'smooth'});
 }
 
 let filt='all';
@@ -382,6 +423,17 @@ function render(){
     `Les champs absents s'affichent « ND » : aucune donnée n'est inventée.`;
 }
 
+/* Lien vers l'annonce d'origine. DuProprio : duproprio.com/fr/{id} redirige vers la fiche
+   complète (vérifié le 7 août 2026 sur DP-1111143). */
+function lien(e){
+  if(/^\d+$/.test(e.id))
+    return `<a class="lk" href="https://www.centris.ca/fr/propriete~a-vendre~/${e.id}" target="_blank" rel="noopener">Ouvrir la fiche Centris ↗</a>`;
+  const dp=String(e.id).match(/^DP-(\d+)$/);
+  if(dp)
+    return `<a class="lk" href="https://duproprio.com/fr/${dp[1]}" target="_blank" rel="noopener">Ouvrir la fiche DuProprio ↗</a>`;
+  return '';
+}
+
 /* ---------- fiche détail ---------- */
 function open_(key){
   const e=DB.find(x=>x.key===key); if(!e)return;
@@ -411,7 +463,7 @@ function open_(key){
       ${money(e.priceHist[0].prix)} le ${e.priceHist[0].date} → <strong>${money(e.prix)}</strong> le ${e.moveDate}
       (${e.deltaPct>0?'+':''}${dec(e.deltaPct,1)} % sur le dernier changement)</div></div>`:''}
     <div class="sec"><h3>Historique (${e.snaps.length} passages · ${e.firstSeen} → ${e.seen})</h3><div class="tl">${tl}</div></div>
-    ${/^\d+$/.test(e.id)?`<a class="lk" href="https://www.centris.ca/fr/propriete~a-vendre~/${e.id}" target="_blank" rel="noopener">Ouvrir la fiche Centris ↗</a>`:''}`;
+    ${lien(e)}`;
   document.getElementById('ov').classList.add('on');
   document.body.style.overflow='hidden';
 }
@@ -421,11 +473,13 @@ function closeSheet(){document.getElementById('ov').classList.remove('on');docum
 document.getElementById('grid').addEventListener('click',ev=>{
   const c=ev.target.closest('.c'); if(c)open_(c.dataset.k);});
 document.getElementById('chips').addEventListener('click',ev=>{
-  const c=ev.target.closest('.chip'); if(!c)return;
-  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
-  c.classList.add('on'); filt=c.dataset.f; render();});
-['day','sort','src','sec'].forEach(id=>document.getElementById(id).onchange=render);
+  const c=ev.target.closest('.chip'); if(c)setFilter(c.dataset.f);});
+document.getElementById('kpis').addEventListener('click',ev=>{
+  const k=ev.target.closest('.kpi[data-f]'); if(k)setFilter(k.dataset.f);});
+['day','sort','src','sec'].forEach(id=>document.getElementById(id).onchange=()=>{render();toGrid();});
 document.getElementById('q').oninput=render;
+document.getElementById('mtoggle').onclick=()=>
+  document.querySelector('header').classList.toggle('open');
 document.getElementById('ov').onclick=ev=>{if(ev.target.id==='ov')closeSheet()};
 document.onkeydown=ev=>{if(ev.key==='Escape')closeSheet()};
 document.getElementById('btnDrive').onclick=connectDrive;
@@ -433,9 +487,34 @@ document.getElementById('btnReload').onclick=()=>{
   const t=localStorage.getItem(LS.tok);
   if(t)driveLoad(t).catch(()=>{localStorage.removeItem(LS.tok);location.reload();});
   else location.reload();};
-document.getElementById('btnOut').onclick=()=>{
+/* ---------- réglages ---------- */
+function applyTheme(t){
+  localStorage.setItem('dm_theme',t);
+  const d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches);
+  document.documentElement.setAttribute('data-theme',d?'dark':'light');
+}
+document.getElementById('btnSet').onclick=()=>{
+  const t=localStorage.getItem('dm_theme')||'auto';
+  document.getElementById('sheet').innerHTML=`
+    <button class="cl" onclick="closeSheet()">&times;</button>
+    <h2>Réglages</h2>
+    <div class="sec"><h3>Apparence</h3>
+      <div class="bar" style="overflow:visible;flex-wrap:wrap">
+        ${[['light','☀️ Clair'],['dark','🌙 Sombre'],['auto','Auto (système)']]
+          .map(([v,l])=>`<span class="chip ${t===v?'on':''}" onclick="applyTheme('${v}');document.getElementById('btnSet').click()">${l}</span>`).join('')}
+      </div></div>
+    <div class="sec"><h3>Données</h3>
+      <div class="note">${DB.length} inscriptions · ${DAYS.length} journées chargées.<br>
+      Dernière visite enregistrée : ${lastVisit?new Date(lastVisit).toLocaleString('fr-CA'):'jamais'}.</div>
+      <button class="btn ghost" style="margin-top:10px" onclick="viderCache()">Effacer le cache de cet appareil</button>
+    </div>`;
+  document.getElementById('ov').classList.add('on');
+  document.body.style.overflow='hidden';
+};
+function viderCache(){
   if(confirm("Effacer les données en cache sur cet appareil?")){
-    [LS.tok,LS.cache].forEach(k=>localStorage.removeItem(k));location.reload();}};
+    [LS.tok,LS.cache].forEach(k=>localStorage.removeItem(k));location.reload();}
+}
 
 const drop=document.getElementById('drop'),file=document.getElementById('file');
 drop.onclick=()=>file.click();
