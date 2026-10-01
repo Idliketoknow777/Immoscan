@@ -1,286 +1,357 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Radar Immobilier</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Radar immobilier — Portail</title>
+<!--
+  Portail du Radar immobilier — page /radar/ (module M7, format 1 de donnees.json).
+  Coquille publique (décision 1-C, 29 sept. 2026) : AUCUNE donnée dans ce fichier.
+  Après connexion Google, la page lit donnees.json et journal_runs.json dans le Drive
+  (« Radar immobilier / 03 - Donnees machine ») — lecture seule, jamais d'écriture.
+  Aucun calcul : la page affiche ce que le Cruncher et assembler.py ont produit.
+  Contrat de données : CHANTIER_Portail_Premiere_Carte.md §5.
+-->
 <style>
-:root{
-  --bg:#f6f7f9; --card:#fff; --line:#e4e7ec; --line2:#f0f2f5;
-  --tx:#111827; --tx2:#6b7280; --tx3:#9ca3af;
-  --go:#16a34a; --goBg:#dcfce7; --no:#dc2626; --noBg:#fee2e2;
-  --warn:#d97706; --warnBg:#fef3c7; --acc:#2563eb; --accBg:#dbeafe;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);
-  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,sans-serif}
-.wrap{max-width:1780px;margin:0 auto;padding:22px 26px 70px}
-.hd{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
-h1{font-size:25px;font-weight:750;letter-spacing:-.5px}
-.sub{color:var(--tx2);font-size:13px;margin-top:3px}
-.hbtns{display:flex;gap:8px}
-.hb{background:var(--card);border:1px solid var(--line);border-radius:8px;
-  padding:9px 16px;font-size:14px;color:var(--tx2);cursor:pointer}
-.hb:hover{background:var(--line2)}
-.search{width:100%;margin:16px 0 18px;padding:13px 16px;border:1px solid var(--line);
-  border-radius:9px;font-size:14.5px;background:var(--card);color:var(--tx)}
-.search::placeholder{color:var(--tx3)}
-
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px;margin-bottom:18px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:15px 17px}
-.kpi.sel{border:2px solid var(--tx);padding:14px 16px}
-.kpi.hl{border-left:3px solid var(--go)}
-.kn{font-size:25px;font-weight:750;letter-spacing:-.6px}
-.kl{font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--tx2);
-  font-weight:600;margin-top:3px}
-.kn.g{color:var(--go)} .kn.r{color:var(--no)} .kn.b{color:var(--acc)} .kn.o{color:var(--warn)}
-
-.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.chip{background:var(--card);border:1px solid var(--line);border-radius:20px;
-  padding:8px 17px;font-size:13.5px;color:var(--tx);cursor:pointer}
-.chip:hover{background:var(--line2)}
-.chip.on{background:var(--tx);border-color:var(--tx);color:#fff;font-weight:600}
-.sels{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
-select{background:var(--card);border:1px solid var(--line);border-radius:8px;
-  padding:9px 13px;font-size:13.5px;color:var(--tx);cursor:pointer;min-width:165px}
-
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(370px,1fr));gap:15px}
-.c{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--no);
-  border-radius:10px;padding:17px 19px;cursor:pointer;transition:.14s}
-.c:hover{box-shadow:0 3px 12px rgba(0,0,0,.07);transform:translateY(-1px)}
-.c.pot{border-left-color:var(--go)}
-.c.nc{border-left-color:var(--tx3)}
-.crow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.price{font-size:21.5px;font-weight:750;letter-spacing:-.5px}
-.score{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;
-  justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
-.s-g{background:var(--goBg);color:var(--go)} .s-r{background:var(--noBg);color:var(--no)}
-.s-n{background:#f3f4f6;color:var(--tx3)}
-.addr{font-size:15.5px;font-weight:600;margin-top:9px}
-.sect{color:var(--tx2);font-size:13.5px;margin-top:1px}
-.tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px;align-items:center}
-.tag{background:#f3f4f6;color:var(--tx2);border-radius:5px;padding:3px 9px;font-size:12px}
-.tag.dn{background:var(--goBg);color:var(--go);font-weight:600}
-.tag.cr{background:var(--accBg);color:var(--acc);font-weight:600}
-.tag.nc{background:var(--warnBg);color:var(--warn);font-weight:600}
-
-.mets{display:flex;gap:18px;margin-top:14px;padding-top:13px;border-top:1px solid var(--line2)}
-.m{flex:1}
-.mv{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
-.mv.g{color:var(--go)} .mv.r{color:var(--no)} .mv.n{color:var(--tx3);font-weight:600}
-.ml{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--tx3);
-  font-weight:600;margin-top:2px}
-.arrow{color:var(--tx3);font-size:13px;align-self:center;padding:0 2px}
-
-.gap{margin-top:13px;padding-top:12px;border-top:1px solid var(--line2)}
-.gtxt{display:flex;justify-content:space-between;font-size:12.5px;color:var(--tx2);margin-bottom:6px}
-.gtxt b{color:var(--go);font-variant-numeric:tabular-nums}
-.track{height:6px;background:#eef0f3;border-radius:3px;overflow:hidden;display:flex}
-.fillA{background:var(--no);opacity:.55}
-.fillB{background:var(--go)}
-
-.det{display:none;margin-top:15px;padding-top:15px;border-top:1px solid var(--line)}
-.c.open .det{display:block}
-.ab{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-.col{background:#fafbfc;border:1px solid var(--line);border-radius:9px;padding:13px}
-.col.b{background:#f6fdf9;border-color:#c7ebd5}
-.ch{font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--tx3);
-  font-weight:700;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid var(--line)}
-.col.b .ch{color:var(--go)}
-.r{display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:13px}
-.r span:first-child{color:var(--tx2)}
-.r span:last-child{font-variant-numeric:tabular-nums;font-weight:600}
-.r.hi{border-top:1px solid var(--line);margin-top:7px;padding-top:8px;font-size:14.5px}
-.col.b .r.hi span:last-child{color:var(--go)}
-.bars{display:flex;align-items:flex-end;gap:5px;height:64px;margin-top:14px}
-.bc{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
-.bf{width:100%;background:#bfdbfe;border-radius:3px 3px 0 0;min-height:3px}
-.bc.k .bf{background:var(--go)}
-.by{font-size:9.5px;color:var(--tx3)}
-.bv{font-size:9.5px;color:var(--tx2);font-variant-numeric:tabular-nums}
-.acts{display:flex;gap:9px;margin-top:14px}
-.btn{flex:1;text-align:center;text-decoration:none;padding:10px;border-radius:8px;
-  font-size:13px;font-weight:600;border:1px solid var(--line);color:var(--tx);background:#fff}
-.btn:hover{background:var(--line2)}
-.btn.x{background:var(--goBg);color:var(--go);border-color:#bbf7d0}
-.note{background:var(--warnBg);border-left:3px solid var(--warn);border-radius:0 7px 7px 0;
-  padding:10px 13px;margin-top:12px;font-size:12.5px;color:#78350f}
-.hint{text-align:center;color:var(--tx3);font-size:12.5px;margin-top:11px}
-@media(max-width:640px){.ab{grid-template-columns:1fr}.wrap{padding:16px 14px 60px}}
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2330;--mute:#6b7280;--line:#e5e7eb;--pos:#0f7b4b;--posbg:#e6f4ec;--neg:#b42318;--negbg:#fdecea;--acc:#2446a8;--warn:#8a5a00;--warnbg:#fff4de}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:#fff;border-bottom:1px solid var(--line);padding:12px 16px;position:sticky;top:0;z-index:2}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;max-width:1200px;margin:auto}
+h1{font-size:19px;margin:0}.sub{color:var(--mute);font-size:13px}
+.etat{font-size:13px;padding:4px 10px;border-radius:99px;background:var(--bg);color:var(--mute);border:0;font-family:inherit;cursor:pointer}
+.etat.ok{background:var(--posbg);color:var(--pos)}.etat.ko{background:var(--negbg);color:var(--neg)}
+.barre{display:flex;gap:8px;flex-wrap:wrap;max-width:1200px;margin:10px auto 0}
+.barre select,.barre button{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);max-width:100%}
+.kpis{display:flex;gap:10px;flex-wrap:wrap;max-width:1200px;margin:16px auto 0;padding:0 16px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:120px;flex:1 1 120px}
+.kpi b{display:block;font-size:22px}.kpi span{font-size:12px;color:var(--mute)}.kpi.off{opacity:.5}
+main{max-width:1200px;margin:16px auto;padding:0 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:14px}
+.carte{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.tag{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.adr{font-weight:650;font-size:16px;margin:0}.meta{color:var(--mute);font-size:13px}
+.prix{display:grid;grid-template-columns:1.25fr 1fr .8fr;gap:6px}
+.prix>div{background:var(--bg);border-radius:8px;padding:6px 8px;min-width:0}
+.prix .l{font-size:11px;color:var(--mute)}.prix .v{font-size:17px;font-weight:700;white-space:nowrap}
+.prix .v.s{font-size:15px}.prix .r{font-size:11px;color:var(--mute)}
+table.abc{width:100%;border-collapse:separate;border-spacing:4px 0;table-layout:fixed}
+.abc th{font-size:11px;color:var(--mute);font-weight:500;text-align:center;padding-bottom:2px}
+.abc td{text-align:center;white-space:nowrap}
+.abc .val td{font-weight:650;font-size:14.5px;padding:4px 0}
+.abc .ec td{padding:6px 2px;border-radius:8px}
+.abc .ec .l{display:block;font-size:10.5px;color:var(--mute);white-space:normal;line-height:1.2}
+.abc .ec b{font-size:15px}
+.pos{background:var(--posbg)}.pos b{color:var(--pos)}.neg{background:var(--negbg)}.neg b{color:var(--neg)}
+ul.mf{margin:0;padding-left:18px;font-size:13px}ul.mf li{margin:2px 0}
+.chk{display:inline-block;width:15px;height:15px;border:1.5px solid var(--mute);border-radius:4px;vertical-align:-2px;margin-left:4px;opacity:.6}
+.bas{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{text-decoration:none;font-size:13px;padding:7px 12px;border-radius:8px;border:1px solid var(--acc);color:var(--acc);background:#fff;font-family:inherit;cursor:pointer}
+.btn.p{background:var(--acc);color:#fff}.btn[aria-disabled=true]{opacity:.4;pointer-events:none}
+.score{margin-left:auto;font-size:12px;color:var(--mute)}
+details{font-size:13px}summary{cursor:pointer;color:var(--acc)}
+table.det{width:100%;border-collapse:collapse;margin-top:6px}
+.det td,.det th{padding:3px 4px;border-bottom:1px solid var(--line);text-align:right;font-weight:400}
+.det td:first-child,.det th:first-child{text-align:left}.det th{color:var(--mute);font-size:12px}
+.det-plan{width:100%;height:180px;border:0;border-radius:8px;margin-top:8px}
+.flag{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:6px 8px;margin:6px 0 0}
+.accueil{max-width:520px;margin:48px auto;padding:24px 16px;text-align:center;grid-column:1/-1}
+.accueil p{color:var(--mute)}
+.panneau{max-width:1200px;margin:12px auto 0;padding:0 16px}
+.panneau .boite{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13px}
+.panneau .run{border-bottom:1px solid var(--line);padding:8px 0}.panneau .run:last-child{border:0}
+.panneau pre{white-space:pre-wrap;margin:4px 0 0;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--mute)}
+.note{max-width:1200px;margin:0 auto 24px;padding:0 16px;color:var(--mute);font-size:12px}
+[hidden]{display:none!important}
+@media (max-width:420px){.prix{grid-template-columns:1fr 1fr}.prix>div:first-child{grid-column:1/-1}}
 </style>
 </head>
 <body>
-<div class="wrap">
+<header>
+ <div class="top">
+  <div><h1>Radar immobilier — Portail</h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <button class="etat" id="etat" type="button" hidden></button>
+ </div>
+ <div class="barre" id="barre" hidden>
+  <select id="tri" aria-label="Trier">
+   <option value="ecartC">Trier : écart C ↓ (potentiel)</option>
+   <option value="ecartA">Écart A ↓ (plus petit écart à négocier)</option>
+   <option value="ppp">Prix par porte ↑</option>
+   <option value="recent">Plus récents</option>
+  </select>
+  <select id="secteur" aria-label="Secteur"><option value="">Tous les secteurs</option></select>
+  <button id="btn-journal" type="button">Journal des runs</button>
+  <button id="btn-rafraichir" type="button">Rafraîchir</button>
+ </div>
+</header>
 
-<div class="hd">
-  <div>
-    <h1>Radar Immobilier</h1>
-    <div class="sub">9 inscriptions · 1 crunchée · évaluation du potentiel A → B</div>
-  </div>
-  <div class="hbtns"><div class="hb">Recharger</div><div class="hb">⚙</div></div>
-</div>
+<section class="panneau" id="panneau-journal" hidden><div class="boite" id="journal"></div></section>
+<section class="kpis" id="kpis" hidden></section>
 
-<input class="search" placeholder="Adresse, secteur, n° d'inscription...">
-
-<div class="kpis">
-  <div class="kpi sel"><div class="kn">9</div><div class="kl">Inscriptions</div></div>
-  <div class="kpi"><div class="kn b">1</div><div class="kl">Crunchées</div></div>
-  <div class="kpi hl"><div class="kn g">1</div><div class="kl">Potentiel Go</div></div>
-  <div class="kpi"><div class="kn r">1</div><div class="kl">No-Go actuel</div></div>
-  <div class="kpi"><div class="kn o">8</div><div class="kl">À cruncher</div></div>
-  <div class="kpi"><div class="kn">+3,40</div><div class="kl">Écart TGA moy.</div></div>
-</div>
-
-<div class="chips">
-  <div class="chip on">Tout</div>
-  <div class="chip">Potentiel Go</div>
-  <div class="chip">À creuser</div>
-  <div class="chip">No-Go</div>
-  <div class="chip">À cruncher</div>
-  <div class="chip">Baisses de prix</div>
-  <div class="chip">Depuis ma dernière visite</div>
-</div>
-
-<div class="sels">
-  <select><option>Trier : écart A→B ↓</option><option>TGA potentiel ↓</option>
-    <option>TGA actuel ↓</option><option>Prix / porte ↑</option><option>Prix ↓</option></select>
-  <select><option>Toutes journées</option></select>
-  <select><option>Toutes sources</option></select>
-  <select><option>Tous secteurs</option></select>
-</div>
-
-<div class="grid" id="g">
-
-  <div class="c pot" onclick="this.classList.toggle('open')">
-    <div class="crow">
-      <div class="price">3 400 000 $</div>
-      <div class="score s-g">GO</div>
-    </div>
-    <div class="addr">3725, avenue Dupuis</div>
-    <div class="sect">Montréal (Côte-des-Neiges/NDG)</div>
-    <div class="tags"><span class="tag">Centris · 1953</span>
-      <span class="tag cr">Crunché</span><span class="tag dn">Potentiel +115,6 k$</span></div>
-    <div class="mets">
-      <div class="m"><div class="mv">28</div><div class="ml">Portes</div></div>
-      <div class="m"><div class="mv r">4,05 %</div><div class="ml">TGA actuel</div></div>
-      <div class="arrow">→</div>
-      <div class="m"><div class="mv g">7,45 %</div><div class="ml">TGA An 3</div></div>
-      <div class="m"><div class="mv">121 k$</div><div class="ml">/ porte</div></div>
-    </div>
-    <div class="gap">
-      <div class="gtxt"><span>RNO 137,8 k$ → 253,4 k$</span><b>+83,9 %</b></div>
-      <div class="track"><div class="fillA" style="width:54%"></div><div class="fillB" style="width:46%"></div></div>
-    </div>
-
-    <div class="det">
-      <div class="ab">
-        <div class="col">
-          <div class="ch">A — à l'achat</div>
-          <div class="r"><span>Loyers</span><span>238 620 $</span></div>
-          <div class="r"><span>Revenus bruts</span><span>257 424 $</span></div>
-          <div class="r"><span>Dépenses</span><span>111 928 $</span></div>
-          <div class="r"><span>Facteur dép.</span><span>46,5 %</span></div>
-          <div class="r hi"><span>RNO</span><span>137 773 $</span></div>
-        </div>
-        <div class="col b">
-          <div class="ch">B — optimisé · An 3</div>
-          <div class="r"><span>Loyers</span><span>333 618 $</span></div>
-          <div class="r"><span>Revenus bruts</span><span>352 422 $</span></div>
-          <div class="r"><span>Dépenses</span><span>88 460 $</span></div>
-          <div class="r"><span>Facteur dép.</span><span>28,1 %</span></div>
-          <div class="r hi"><span>RNO</span><span>253 389 $</span></div>
-        </div>
-      </div>
-      <div class="bars">
-        <div class="bc"><div class="bv">239k</div><div class="bf" style="height:53%"></div><div class="by">An 0</div></div>
-        <div class="bc"><div class="bv">261k</div><div class="bf" style="height:58%"></div><div class="by">An 1</div></div>
-        <div class="bc"><div class="bv">299k</div><div class="bf" style="height:67%"></div><div class="by">An 2</div></div>
-        <div class="bc k"><div class="bv">334k</div><div class="bf" style="height:74%"></div><div class="by">An 3</div></div>
-        <div class="bc"><div class="bv">385k</div><div class="bf" style="height:86%"></div><div class="by">An 4</div></div>
-        <div class="bc"><div class="bv">448k</div><div class="bf" style="height:100%"></div><div class="by">An 5</div></div>
-      </div>
-      <div class="acts">
-        <a class="btn" href="https://www.centris.ca" target="_blank" rel="noopener" onclick="event.stopPropagation()">Aller sur Centris</a>
-        <a class="btn x" href="https://drive.google.com/drive/folders/1Myw-tUQyLoYeTCAa4wbAjsUbS-q0o0xI" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ouvrir le Cruncher</a>
-      </div>
-      <div class="note"><b>Hypothèse à valider.</b> Le scénario B met le chauffage à zéro.
-        Chauffage maintenu : RNO 228 671 $, TGA 6,73 %. Grille CDN du 2024-09-05.</div>
-    </div>
-  </div>
-
-  <div class="c nc"><div class="crow"><div class="price">1 599 000 $</div><div class="score s-n">?</div></div>
-    <div class="addr">4161, 41e Rue</div><div class="sect">Montréal (Villeray/St-Michel/Parc-Extension)</div>
-    <div class="tags"><span class="tag">Centris · 15869869</span><span class="tag nc">À cruncher</span></div>
-    <div class="mets"><div class="m"><div class="mv">8</div><div class="ml">Portes</div></div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA actuel</div></div><div class="arrow">→</div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA An 3</div></div>
-      <div class="m"><div class="mv">200 k$</div><div class="ml">/ porte</div></div></div></div>
-
-  <div class="c nc"><div class="crow"><div class="price">1 699 000 $</div><div class="score s-n">?</div></div>
-    <div class="addr">6295, rue Chambord</div><div class="sect">Montréal (Rosemont/La Petite-Patrie)</div>
-    <div class="tags"><span class="tag">Centris · 28785972</span><span class="tag dn">📉 −2,9 %</span>
-      <span class="tag nc">À cruncher</span></div>
-    <div class="mets"><div class="m"><div class="mv">8</div><div class="ml">Portes</div></div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA actuel</div></div><div class="arrow">→</div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA An 3</div></div>
-      <div class="m"><div class="mv">212 k$</div><div class="ml">/ porte</div></div></div></div>
-
-  <div class="c nc"><div class="crow"><div class="price">1 695 000 $</div><div class="score s-n">?</div></div>
-    <div class="addr">831, rue Bertrand</div><div class="sect">Longueuil (Le Vieux-Longueuil)</div>
-    <div class="tags"><span class="tag">Centris · 11304991</span><span class="tag nc">À cruncher</span></div>
-    <div class="mets"><div class="m"><div class="mv">8</div><div class="ml">Portes</div></div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA actuel</div></div><div class="arrow">→</div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA An 3</div></div>
-      <div class="m"><div class="mv">212 k$</div><div class="ml">/ porte</div></div></div></div>
-
-  <div class="c nc"><div class="crow"><div class="price">2 399 000 $</div><div class="score s-n">?</div></div>
-    <div class="addr">3545, rue Saint-Urbain</div><div class="sect">Montréal (Le Plateau-Mont-Royal)</div>
-    <div class="tags"><span class="tag">Centris · 21324345</span><span class="tag nc">À cruncher</span></div>
-    <div class="mets"><div class="m"><div class="mv">9</div><div class="ml">Portes</div></div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA actuel</div></div><div class="arrow">→</div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA An 3</div></div>
-      <div class="m"><div class="mv">267 k$</div><div class="ml">/ porte</div></div></div></div>
-
-  <div class="c nc"><div class="crow"><div class="price">815 000 $</div><div class="score s-n">?</div></div>
-    <div class="addr">1526, rue Estelle-Mouton</div><div class="sect">Longueuil (Le Vieux-Longueuil)</div>
-    <div class="tags"><span class="tag">Centris · 10895378</span><span class="tag nc">À cruncher</span></div>
-    <div class="mets"><div class="m"><div class="mv">5</div><div class="ml">Portes</div></div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA actuel</div></div><div class="arrow">→</div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA An 3</div></div>
-      <div class="m"><div class="mv">163 k$</div><div class="ml">/ porte</div></div></div></div>
-
-  <div class="c nc"><div class="crow"><div class="price">1 920 000 $</div><div class="score s-n">?</div></div>
-    <div class="addr">853-859, rue Sainte-Hélène</div><div class="sect">Longueuil (Le Vieux-Longueuil)</div>
-    <div class="tags"><span class="tag">Centris · 21271909</span><span class="tag nc">À cruncher</span></div>
-    <div class="mets"><div class="m"><div class="mv">6</div><div class="ml">Portes</div></div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA actuel</div></div><div class="arrow">→</div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA An 3</div></div>
-      <div class="m"><div class="mv">320 k$</div><div class="ml">/ porte</div></div></div></div>
-
-  <div class="c nc"><div class="crow"><div class="price">1 349 888 $</div><div class="score s-n">?</div></div>
-    <div class="addr">6744, 21e Avenue</div><div class="sect">Montréal (Rosemont/La Petite-Patrie)</div>
-    <div class="tags"><span class="tag">Centris · 9120477</span><span class="tag nc">À cruncher</span></div>
-    <div class="mets"><div class="m"><div class="mv n">ND</div><div class="ml">Portes</div></div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA actuel</div></div><div class="arrow">→</div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA An 3</div></div>
-      <div class="m"><div class="mv n">ND</div><div class="ml">/ porte</div></div></div></div>
-
-  <div class="c nc"><div class="crow"><div class="price">1 995 000 $</div><div class="score s-n">?</div></div>
-    <div class="addr">7501-7507, rue Berri</div><div class="sect">Montréal (Villeray/St-Michel/Parc-Extension)</div>
-    <div class="tags"><span class="tag">Centris · 16016542</span><span class="tag nc">À cruncher</span></div>
-    <div class="mets"><div class="m"><div class="mv">5</div><div class="ml">Portes</div></div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA actuel</div></div><div class="arrow">→</div>
-      <div class="m"><div class="mv n">—</div><div class="ml">TGA An 3</div></div>
-      <div class="m"><div class="mv">399 k$</div><div class="ml">/ porte</div></div></div></div>
-
-</div>
-
-<div class="hint">Clique une carte crunchée pour déplier le portrait A vs B complet.</div>
+<main id="grille">
+ <div class="accueil" id="accueil">
+  <p id="message">Les données du Radar sont dans ton Google Drive. Connecte-toi pour les afficher.</p>
+  <button class="btn p" id="btn-connexion" type="button">Se connecter avec Google</button>
+ </div>
+</main>
+<p class="note" id="pied" hidden></p>
 
 <script>
-document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
-  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');});
+"use strict";
+// ---------------------------------------------------------------- réglages
+// Identifiant client OAuth (étiquette publique, pas une clé — décision 1-C du 29 sept. 2026).
+const CLIENT_ID = "";
+// Dossier « Radar immobilier / 03 - Donnees machine » (Drive de François).
+const DOSSIER_DONNEES = "1pW-gd80-oXDWSr4lIMp8Oswp1bcjza1L";
+const NOM_DONNEES = "donnees.json";
+const NOM_JOURNAL = "journal_runs.json";
+const PORTEE = "https://www.googleapis.com/auth/drive.readonly";
+const FORMATS_CONNUS = ["1"];
+
+// ---------------------------------------------------------------- état
+let jeton = null, donnees = null, journal = null, clientJeton = null;
+const $ = (id) => document.getElementById(id);
+
+// ---------------------------------------------------------------- formatage (aucun calcul)
+const nbFr = new Intl.NumberFormat("fr-CA", {maximumFractionDigits: 0});
+const nb1 = new Intl.NumberFormat("fr-CA", {minimumFractionDigits: 1, maximumFractionDigits: 1});
+const estNb = (v) => typeof v === "number" && isFinite(v);
+const $$ = (v) => estNb(v) ? nbFr.format(v) + " $" : "—";
+const $mille = (v) => estNb(v) ? nbFr.format(Math.round(v / 1000) * 1000) + " $" : "—";
+const signe$ = (v) => estNb(v) ? (v >= 0 ? "+" : "−") + nbFr.format(Math.abs(Math.round(v / 1000) * 1000)) + " $" : "—";
+const pct = (v) => estNb(v) ? nb1.format(v * 100) + " %" : "—";
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const dateCourte = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso.length === 10 ? iso + "T12:00:00" : iso);
+  return isNaN(d) ? esc(iso) : d.toLocaleDateString("fr-CA", {day: "numeric", month: "short"});
+};
+const dateHeure = (iso) => {
+  const d = new Date(iso);
+  return isNaN(d) ? "—" : d.toLocaleDateString("fr-CA", {day: "numeric", month: "short"}) + ", "
+    + d.toLocaleTimeString("fr-CA", {hour: "2-digit", minute: "2-digit"});
+};
+const aujourdhui = () => new Date().toLocaleDateString("en-CA");  // AAAA-MM-JJ, heure locale
+
+// ---------------------------------------------------------------- connexion Google
+function message(txt) { $("message").textContent = txt; $("accueil").hidden = false; }
+
+function lireJetonMemorise() {
+  try {
+    const j = JSON.parse(sessionStorage.getItem("radar_jeton") || "null");
+    if (j && j.expire > Date.now() + 60000) return j.valeur;
+  } catch (e) {}
+  return null;
+}
+function memoriserJeton(valeur, secondes) {
+  try { sessionStorage.setItem("radar_jeton", JSON.stringify({valeur, expire: Date.now() + secondes * 1000})); } catch (e) {}
+}
+function oublierJeton() { jeton = null; try { sessionStorage.removeItem("radar_jeton"); } catch (e) {} }
+
+function chargerGIS() {
+  return new Promise((ok, ko) => {
+    if (window.google && google.accounts && google.accounts.oauth2) return ok();
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client"; s.async = true;
+    s.onload = ok; s.onerror = () => ko(new Error("Service de connexion Google injoignable."));
+    document.head.appendChild(s);
+  });
+}
+
+async function connecter() {
+  if (!CLIENT_ID) { message("Portail pas encore relié à Google : l'identifiant client OAuth reste à installer (voir la fiche du chantier)."); return; }
+  try { await chargerGIS(); } catch (e) { message(e.message); return; }
+  if (!clientJeton) {
+    clientJeton = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID, scope: PORTEE,
+      callback: (r) => {
+        if (r.error) { message("Connexion refusée ou annulée (" + r.error + ")."); return; }
+        jeton = r.access_token; memoriserJeton(jeton, Number(r.expires_in) || 3600); charger();
+      },
+    });
+  }
+  clientJeton.requestAccessToken();
+}
+
+// ---------------------------------------------------------------- lecture Drive (lecture seule)
+async function drive(url) {
+  const r = await fetch(url, {headers: {Authorization: "Bearer " + jeton}});
+  if (r.status === 401) { oublierJeton(); throw Object.assign(new Error("Session expirée : reconnecte-toi."), {reconnecter: true}); }
+  if (r.status === 403 || r.status === 404) throw new Error("Ce compte Google n'a pas accès aux données du Radar.");
+  if (!r.ok) throw new Error("Drive a répondu " + r.status + ".");
+  return r;
+}
+async function lireFichier(nom) {
+  const q = encodeURIComponent(`'${DOSSIER_DONNEES}' in parents and name = '${nom}' and trashed = false`);
+  const liste = await (await drive(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)&orderBy=modifiedTime desc&pageSize=1&supportsAllDrives=true&includeItemsFromAllDrives=true`)).json();
+  if (!liste.files || !liste.files.length) return null;
+  return (await drive(`https://www.googleapis.com/drive/v3/files/${liste.files[0].id}?alt=media&supportsAllDrives=true`)).json();
+}
+
+async function charger() {
+  message("Lecture des données du Radar…"); $("btn-connexion").hidden = true;
+  try {
+    [donnees, journal] = await Promise.all([lireFichier(NOM_DONNEES), lireFichier(NOM_JOURNAL).catch(() => null)]);
+    if (!donnees) throw new Error("donnees.json introuvable dans « 03 - Donnees machine ».");
+    afficher();
+  } catch (e) {
+    $("btn-connexion").hidden = false; $("btn-connexion").textContent = e.reconnecter ? "Se reconnecter" : "Réessayer";
+    message(e.message);
+  }
+}
+
+// ---------------------------------------------------------------- affichage
+function afficher() {
+  const ims = Array.isArray(donnees.immeubles) ? donnees.immeubles : [];
+  $("accueil").hidden = true; $("barre").hidden = false; $("kpis").hidden = false; $("pied").hidden = false;
+
+  const fmt = String(donnees.format);
+  $("pied").textContent = "Données générées le " + dateHeure(donnees.genere_le) + " (format " + fmt + ")."
+    + (FORMATS_CONNUS.includes(fmt) ? "" : " ⚠ Format inconnu de cette page : affichage possiblement incomplet.")
+    + " Écarts = valeur économique − prix demandé, arrondis au millier. MRB = prix demandé ÷ revenus bruts.";
+
+  // Secteurs (liste déroulante)
+  const sel = $("secteur"), choisi = sel.value;
+  const secteurs = [...new Set(ims.map((i) => i.secteur).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
+  sel.innerHTML = '<option value="">Tous les secteurs</option>' + secteurs.map((s) => `<option${s === choisi ? " selected" : ""}>${esc(s)}</option>`).join("");
+
+  // État du dernier run
+  const et = $("etat"); et.hidden = !journal;
+  if (journal && journal.runs && journal.runs.length) {
+    const dernier = journal.runs[0];
+    et.className = "etat " + (dernier.probleme ? "ko" : "ok");
+    et.textContent = (dernier.probleme ? "● Dernier run en problème : " : "● Dernier run réussi : ") + dateHeure(dernier.date);
+  }
+  afficherJournal();
+
+  // Bande d'indicateurs
+  const auj = aujourdhui();
+  const nouveaux = ims.filter((i) => i.date_analyse === auj).length;
+  $("kpis").innerHTML = kpi(ims.length, "immeubles au Radar") + kpi(nouveaux, "nouveaux aujourd'hui")
+    + kpi("—", "baisses de prix (à venir)", true) + kpi("—", "score (à venir)", true);
+
+  afficherCartes();
+}
+const kpi = (v, l, off) => `<div class="kpi${off ? " off" : ""}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
+
+function trier(ims) {
+  const t = $("tri").value, bas = (v) => (estNb(v) ? 0 : 1);
+  const recent = (a, b) => String(b.date_analyse || "").localeCompare(String(a.date_analyse || ""));
+  const cles = {
+    ecartC: (a, b) => bas(a.ecart?.C) - bas(b.ecart?.C) || (b.ecart?.C ?? 0) - (a.ecart?.C ?? 0) || recent(a, b),
+    ecartA: (a, b) => bas(a.ecart?.A) - bas(b.ecart?.A) || (b.ecart?.A ?? 0) - (a.ecart?.A ?? 0) || recent(a, b),
+    ppp: (a, b) => bas(a.prix_par_porte_demande) - bas(b.prix_par_porte_demande) || (a.prix_par_porte_demande ?? 0) - (b.prix_par_porte_demande ?? 0),
+    recent,
+  };
+  return [...ims].sort(cles[t] || cles.ecartC);
+}
+
+function afficherCartes() {
+  const ims = (donnees.immeubles || []).filter((i) => !$("secteur").value || i.secteur === $("secteur").value);
+  const libTri = $("tri").selectedOptions[0].textContent.replace(/^Trier : /, "");
+  $("sous-titre").textContent = ims.length + " immeuble" + (ims.length > 1 ? "s" : "") + " · trié par " + libTri;
+  const grille = $("grille");
+  grille.querySelectorAll(".carte").forEach((c) => c.remove());
+  if (!ims.length) { message("Aucun immeuble pour ce filtre."); return; }
+  $("accueil").hidden = true;
+  grille.insertAdjacentHTML("beforeend", trier(ims).map(carte).join(""));
+}
+
+function typo(t) {
+  if (!t || typeof t !== "object") return "";
+  const p = Object.entries(t).map(([k, n]) => `${n} × ${esc(String(k).replace(".5", "½"))}`);
+  return p.length ? " (" + p.join(", ") + ")" : "";
+}
+
+function ligneLoyer(lo) {
+  if (!lo || !estNb(lo.A)) return null;
+  let h = `Loyer moyen par porte : <b>${$$(lo.A)}/mois</b> actuel <span class="chk" title="Crochet posé par François après le rent roll — saisie à venir (Google Sheet D2)"></span>`;
+  if (estNb(lo.C)) h += ` → <b>${$$(lo.C)}/mois</b> potentiel (${estNb(lo.ecart) ? (lo.ecart >= 0 ? "+" : "−") + $$(Math.abs(lo.ecart)) : "—"})`;
+  return h;
+}
+
+function carte(im) {
+  const ve = im.valeur_economique || {}, ec = im.ecart || {}, mrb = im.mrb || {};
+  const adresse = String(im.adresse || "Adresse inconnue");
+  const courte = adresse.replace(/,\s*Montr[ée]al\s*$/i, "");
+  const q = encodeURIComponent(adresse);
+  const tag = [im.provenance === "centris" && im.no_inscription ? "Centris " + esc(im.no_inscription) : esc(im.id || ""),
+               "analysé le " + dateCourte(im.date_analyse)].filter(Boolean).join(" · ");
+
+  // Microfiche : la ligne du loyer est rendue depuis le champ structuré (crochet ✓), le reste tel quel.
+  const loyer = ligneLoyer(im.loyer_moyen_porte);
+  const mf = (im.microfiche || []).map((l) => (/^Loyer moyen par porte/.test(l) && loyer) ? loyer : esc(l));
+
+  const ecCase = (v, lib) => estNb(v)
+    ? `<td class="${v >= 0 ? "pos" : "neg"}"><span class="l">${lib}</span><b>${signe$(v)}</b></td>` : "<td></td>";
+
+  const P = im.portraits || {}, ligne = (lib, cle, f) =>
+    `<tr><td>${lib}</td>${["A", "B", "C"].map((p) => `<td>${P[p] && typeof P[p] === "object" ? f(P[p][cle]) : "—"}</td>`).join("")}</tr>`;
+  const n0 = (v) => estNb(v) ? nbFr.format(v) : "—";
+  const avert = [...(im.red_flags || []), ...(im.alertes || [])].filter((x) => x && x !== "…");
+  const payable = im.prix_payable && estNb(im.prix_payable.sur_revenus_actuels)
+    ? `<p>Prix payable (TGA ${pct(im.prix_payable.tga)}, revenus actuels) : ${$$(Math.round(im.prix_payable.sur_revenus_actuels))}</p>` : "";
+  const cr = im.cruncher || {};
+  const lienCr = cr.drive_id ? `https://drive.google.com/file/d/${encodeURIComponent(cr.drive_id)}/view` : null;
+
+  return `<article class="carte">
+  <div class="tag">${tag}</div>
+  <div><p class="adr">${esc(courte)}</p><div class="meta">${esc(im.secteur || "Secteur inconnu")} · ${estNb(im.nb_logements) ? im.nb_logements + " portes" : "portes ?"}${typo(im.typologie)}</div></div>
+  <div class="prix">
+   <div><div class="l">Prix demandé</div><div class="v">${$$(im.prix_demande)}</div></div>
+   <div><div class="l">Prix par porte</div><div class="v s">${$$(im.prix_par_porte_demande)}</div><div class="r">secteur : à venir</div></div>
+   <div><div class="l">MRB</div><div class="v s">${estNb(mrb.A) ? nb1.format(mrb.A) : "—"}</div>${estNb(mrb.C) ? `<div class="r">potentiel C : ${nb1.format(mrb.C)}</div>` : ""}</div>
+  </div>
+  <table class="abc">
+   <tr><th>A · actuel</th><th>B · converti</th><th>C · final</th></tr>
+   <tr class="val"><td>${$mille(ve.A)}</td><td>${$mille(ve.B)}</td><td>${$mille(ve.C)}</td></tr>
+   <tr class="ec">${ecCase(ec.A, "Écart A – à négocier")}<td></td>${ecCase(ec.C, "Écart C – potentiel")}</tr>
+  </table>
+  ${mf.length ? `<ul class="mf">${mf.map((l) => `<li>${l}</li>`).join("")}</ul>` : ""}
+  <details><summary>Détail</summary>
+   <table class="det"><tr><th></th><th>A</th><th>B</th><th>C</th></tr>
+    ${ligne("Revenus bruts", "revenus_bruts", n0)}${ligne("Dépenses", "depenses_totales", n0)}
+    ${ligne("RNO", "rno", n0)}${ligne("Facteur de dépenses", "facteur_depenses", pct)}
+   </table>
+   <iframe class="det-plan" title="Carte" loading="lazy" referrerpolicy="no-referrer" data-src="https://maps.google.com/maps?q=${q}&z=15&output=embed"></iframe>
+   ${payable}
+   ${avert.map((a) => `<p class="flag">⚠ ${esc(a)}</p>`).join("")}
+   ${cr.nom ? `<p style="color:var(--mute)">Cruncher : ${esc(cr.nom)}</p>` : ""}
+  </details>
+  <div class="bas">
+   <a class="btn" target="_blank" rel="noopener" ${im.url ? `href="${esc(im.url)}"` : 'aria-disabled="true"'}>Centris</a>
+   <a class="btn p" target="_blank" rel="noopener" ${lienCr ? `href="${lienCr}"` : 'aria-disabled="true" title="Lien Drive pas encore connu"'}>Cruncher</a>
+   <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">Carte</a>
+   <span class="score">Score : ${estNb(im.score) ? esc(im.score) : "à venir"}</span>
+  </div>
+ </article>`;
+}
+
+function afficherJournal() {
+  const runs = (journal && journal.runs) || [];
+  $("journal").innerHTML = runs.length ? runs.slice(0, 20).map((r) =>
+    `<div class="run"><b>Run ${esc(r.run)}</b> · ${dateHeure(r.date)} · ${r.probleme ? "⚠ problème" : esc(r.conclusion || "")}
+     ${r.lien && /^https:\/\/github\.com\//.test(r.lien) ? ` · <a href="${esc(r.lien)}" target="_blank" rel="noopener">GitHub</a>` : ""}
+     <pre>${esc((r.rapport || []).join("\n"))}</pre></div>`).join("") : "Aucun run inscrit au journal.";
+}
+
+// ---------------------------------------------------------------- événements
+$("btn-connexion").addEventListener("click", () => (jeton ? charger() : connecter()));
+$("tri").addEventListener("change", afficherCartes);
+$("secteur").addEventListener("change", afficherCartes);
+$("btn-rafraichir").addEventListener("click", () => (jeton ? charger() : connecter()));
+const basculerJournal = () => { $("panneau-journal").hidden = !$("panneau-journal").hidden; };
+$("btn-journal").addEventListener("click", basculerJournal);
+$("etat").addEventListener("click", basculerJournal);
+// La petite carte Google Maps ne se charge qu'à l'ouverture du détail.
+document.addEventListener("toggle", (e) => {
+  const f = e.target.open && e.target.querySelector && e.target.querySelector("iframe[data-src]");
+  if (f) { f.src = f.dataset.src; f.removeAttribute("data-src"); }
+}, true);
+
+jeton = lireJetonMemorise();
+if (jeton) charger();
+else if (!CLIENT_ID) message("Portail pas encore relié à Google : l'identifiant client OAuth reste à installer (voir la fiche du chantier).");
 </script>
 </body>
 </html>
