@@ -23,7 +23,8 @@ h1{font-size:19px;margin:0}.sub{color:var(--mute);font-size:13px}
 .etat{font-size:13px;padding:4px 10px;border-radius:99px;background:var(--bg);color:var(--mute);border:0;font-family:inherit;cursor:pointer}
 .etat.ok{background:var(--posbg);color:var(--pos)}.etat.ko{background:var(--negbg);color:var(--neg)}
 .barre{display:flex;gap:8px;flex-wrap:wrap;max-width:1200px;margin:10px auto 0}
-.barre select,.barre button{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);max-width:100%}
+.barre select{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);flex:1 1 0;min-width:0;max-width:340px;text-overflow:ellipsis}
+.etat .ct{display:none}
 .kpis{display:flex;gap:10px;flex-wrap:wrap;max-width:1200px;margin:16px auto 0;padding:0 16px}
 .kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:120px;flex:1 1 120px}
 .kpi b{display:block;font-size:22px}.kpi span{font-size:12px;color:var(--mute)}.kpi.off{opacity:.5}
@@ -64,12 +65,20 @@ table.det{width:100%;border-collapse:collapse;margin-top:6px}
 .note{max-width:1200px;margin:0 auto 24px;padding:0 16px;color:var(--mute);font-size:12px}
 [hidden]{display:none!important}
 @media (max-width:420px){.prix{grid-template-columns:1fr 1fr}.prix>div:first-child{grid-column:1/-1}}
+/* Téléphone : en-tête réduit à deux lignes (titre + dernier run, puis tri + secteur côte à côte). */
+@media (max-width:600px){
+ header{padding:6px 12px}.top{flex-wrap:nowrap;gap:8px}
+ h1{font-size:16px;white-space:nowrap}h1 .lg,.sub,.etat .lg{display:none}.etat .ct{display:inline}
+ .etat{font-size:12px;padding:3px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+ .barre{margin-top:6px;gap:6px;flex-wrap:nowrap}.barre select{max-width:none;padding:5px 8px}
+ .kpis{margin-top:10px}
+}
 </style>
 </head>
 <body>
 <header>
  <div class="top">
-  <div><h1>Radar immobilier — Portail</h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <div><h1>Radar immobilier<span class="lg"> — Portail</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
   <button class="etat" id="etat" type="button" hidden></button>
  </div>
  <div class="barre" id="barre" hidden>
@@ -80,8 +89,6 @@ table.det{width:100%;border-collapse:collapse;margin-top:6px}
    <option value="recent">Plus récents</option>
   </select>
   <select id="secteur" aria-label="Secteur"><option value="">Tous les secteurs</option></select>
-  <button id="btn-journal" type="button">Journal des runs</button>
-  <button id="btn-rafraichir" type="button">Rafraîchir</button>
  </div>
 </header>
 
@@ -220,7 +227,11 @@ function afficher() {
   if (journal && journal.runs && journal.runs.length) {
     const dernier = journal.runs[0];
     et.className = "etat " + (dernier.probleme ? "ko" : "ok");
-    et.textContent = (dernier.probleme ? "● Dernier run en problème : " : "● Dernier run réussi : ") + dateHeure(dernier.date);
+    et.title = "Ouvrir le journal des runs";
+    et.innerHTML = `● <span class="lg">${dernier.probleme ? "Dernier run en problème : " : "Dernier run réussi : "}</span>`
+      + `<span class="ct">${dernier.probleme ? "Problème · " : "Dernier run · "}</span>` + dateHeure(dernier.date);
+  } else if (journal) {
+    et.className = "etat"; et.textContent = "Journal des runs";
   }
   afficherJournal();
 
@@ -339,9 +350,7 @@ function afficherJournal() {
 $("btn-connexion").addEventListener("click", () => (jeton ? charger() : connecter()));
 $("tri").addEventListener("change", afficherCartes);
 $("secteur").addEventListener("change", afficherCartes);
-$("btn-rafraichir").addEventListener("click", () => (jeton ? charger() : connecter()));
 const basculerJournal = () => { $("panneau-journal").hidden = !$("panneau-journal").hidden; };
-$("btn-journal").addEventListener("click", basculerJournal);
 $("etat").addEventListener("click", basculerJournal);
 // La petite carte Google Maps ne se charge qu'à l'ouverture du détail.
 document.addEventListener("toggle", (e) => {
