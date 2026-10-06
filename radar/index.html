@@ -25,6 +25,8 @@ h1{font-size:19px;margin:0}.sub{color:var(--mute);font-size:13px}
 .barre{display:flex;gap:8px;flex-wrap:wrap;max-width:1200px;margin:10px auto 0}
 .barre select{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);flex:1 1 0;min-width:0;max-width:340px;text-overflow:ellipsis}
 .etat .ct{display:none}
+.partage{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--acc);border-radius:8px;background:var(--acc);color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;white-space:nowrap}
+.partage svg{width:15px;height:15px;flex:0 0 auto}
 .kpis{display:flex;gap:10px;flex-wrap:wrap;max-width:1200px;margin:16px auto 0;padding:0 16px}
 .kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:120px;flex:1 1 120px}
 .kpi b{display:block;font-size:22px}.kpi span{font-size:12px;color:var(--mute)}.kpi.off{opacity:.5}
@@ -70,7 +72,7 @@ table.det{width:100%;border-collapse:collapse;margin-top:6px}
  header{padding:6px 12px}.top{flex-wrap:nowrap;gap:8px}
  h1{font-size:16px;white-space:nowrap}h1 .lg,.sub,.etat .lg{display:none}.etat .ct{display:inline}
  .etat{font-size:12px;padding:3px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
- .barre{margin-top:6px;gap:6px;flex-wrap:nowrap}.barre select{max-width:none;padding:5px 8px}
+ .barre{margin-top:6px;gap:6px;flex-wrap:nowrap}.barre select{max-width:none;padding:5px 8px}.partage{padding:5px 10px}.partage span{display:none}
  .kpis{margin-top:8px;gap:6px;flex-wrap:nowrap}.kpi.off{display:none}
  .kpi{display:flex;align-items:baseline;gap:6px;padding:4px 10px;min-width:0;flex:1 1 0;white-space:nowrap;overflow:hidden}
  .kpi b{display:inline;font-size:15px}main{margin-top:8px}
@@ -91,6 +93,7 @@ table.det{width:100%;border-collapse:collapse;margin-top:6px}
    <option value="recent">Plus récents</option>
   </select>
   <select id="secteur" aria-label="Secteur"><option value="">Tous les secteurs</option></select>
+  <button class="partage" id="btn-partager" type="button" aria-label="Partager l'aperçu du Radar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg><span id="txt-partager">Partager</span></button>
  </div>
 </header>
 
@@ -116,6 +119,9 @@ const NOM_DONNEES = "donnees.json";
 const NOM_JOURNAL = "journal_runs.json";
 const PORTEE = "https://www.googleapis.com/auth/drive.readonly";
 const FORMATS_CONNUS = ["1"];
+// Lien envoyé par le bouton « Partager » : l'aperçu invité (lecture seule, sans connexion Google).
+// Le lien du portail lui-même ne montrerait rien à un invité : les données sont dans le Drive de François.
+const LIEN_PARTAGE = "https://claude.ai/artifact/UuhXLBazej9v1EqTG7snNk";
 
 // ---------------------------------------------------------------- état
 let jeton = null, donnees = null, journal = null, clientJeton = null;
@@ -352,6 +358,16 @@ function afficherJournal() {
 $("btn-connexion").addEventListener("click", () => (jeton ? charger() : connecter()));
 $("tri").addEventListener("change", afficherCartes);
 $("secteur").addEventListener("change", afficherCartes);
+// Partager : menu de partage du téléphone (Messenger, WhatsApp, texto…) ; sinon, copie du lien.
+$("btn-partager").addEventListener("click", async () => {
+  const dire = (t) => { $("txt-partager").textContent = t; setTimeout(() => { $("txt-partager").textContent = "Partager"; }, 2500); };
+  if (navigator.share) {
+    try { await navigator.share({title: "Radar immobilier", text: "Aperçu de mon Radar immobilier", url: LIEN_PARTAGE}); }
+    catch (e) { if (e && e.name !== "AbortError") dire("Échec"); }
+    return;
+  }
+  try { await navigator.clipboard.writeText(LIEN_PARTAGE); dire("Lien copié"); } catch (e) { dire("Échec"); }
+});
 const basculerJournal = () => { $("panneau-journal").hidden = !$("panneau-journal").hidden; };
 $("etat").addEventListener("click", basculerJournal);
 // La petite carte Google Maps ne se charge qu'à l'ouverture du détail.
