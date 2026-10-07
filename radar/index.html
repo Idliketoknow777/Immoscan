@@ -10,6 +10,7 @@
   Coquille publique (décision 1-C, 29 sept. 2026) : AUCUNE donnée dans ce fichier.
   Après connexion Google, la page lit donnees.json et journal_runs.json dans le Drive
   (« Radar immobilier / 03 - Donnees machine ») — lecture seule, jamais d'écriture.
+  Partage d'une fiche : image dessinée dans la page + copie du Cruncher lue dans le Drive (lecture seule).
   Aucun calcul : la page affiche ce que le Cruncher et assembler.py ont produit.
   Contrat de données : CHANTIER_Portail_Premiere_Carte.md §5.
 -->
@@ -65,6 +66,16 @@ table.det{width:100%;border-collapse:collapse;margin-top:6px}
 .panneau .run{border-bottom:1px solid var(--line);padding:8px 0}.panneau .run:last-child{border:0}
 .panneau pre{white-space:pre-wrap;margin:4px 0 0;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--mute)}
 .note{max-width:1200px;margin:0 auto 24px;padding:0 16px;color:var(--mute);font-size:12px}
+dialog.pp{border:0;border-radius:14px;padding:16px;width:min(440px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;color:var(--ink);font:inherit;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+dialog.pp::backdrop{background:rgba(20,25,35,.45)}
+.pp h2{font-size:16px;margin:0 0 10px}
+.pp .ap{max-height:44vh;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff}
+.pp .ap img{width:100%;display:block}
+.pp label{display:flex;gap:8px;align-items:center;font-size:14px;margin:12px 0 0;cursor:pointer}
+.pp input[type=checkbox]{width:18px;height:18px;flex:0 0 auto;accent-color:var(--acc)}
+.pp .st{font-size:12.5px;color:var(--mute);min-height:36px;margin:10px 0}
+.pp .act{display:flex;gap:8px;justify-content:flex-end}
+.pp .btn{padding:9px 16px;font-size:14px}.btn:disabled{opacity:.4;cursor:default}
 [hidden]{display:none!important}
 @media (max-width:420px){.prix{grid-template-columns:1fr 1fr}.prix>div:first-child{grid-column:1/-1}}
 /* Téléphone : en-tête réduit à deux lignes (titre + dernier run, puis tri + secteur côte à côte). */
@@ -107,6 +118,15 @@ table.det{width:100%;border-collapse:collapse;margin-top:6px}
  </div>
 </main>
 <p class="note" id="pied" hidden></p>
+
+<dialog class="pp" id="pp" aria-labelledby="pp-titre">
+ <h2 id="pp-titre">Partager</h2>
+ <div class="ap"><img id="pp-apercu" alt="Aperçu de la fiche qui sera envoyée"></div>
+ <label id="pp-l-notes" hidden><input type="checkbox" id="pp-notes" checked> Joindre mes notes</label>
+ <label id="pp-l-cr"><input type="checkbox" id="pp-cr" checked> Joindre une copie du Cruncher (fichier Excel)</label>
+ <div class="st" id="pp-etat" aria-live="polite"></div>
+ <div class="act"><button class="btn" id="pp-annuler" type="button">Annuler</button><button class="btn p" id="pp-envoyer" type="button" disabled>Envoyer</button></div>
+</dialog>
 
 <script>
 "use strict";
@@ -331,6 +351,7 @@ function carte(im) {
    <table class="det"><tr><th></th><th>A</th><th>B</th><th>C</th></tr>
     ${ligne("Revenus bruts", "revenus_bruts", n0)}${ligne("Dépenses", "depenses_totales", n0)}
     ${ligne("RNO", "rno", n0)}${ligne("Facteur de dépenses", "facteur_depenses", pct)}
+    ${["A", "B", "C"].some((p) => estNb((im.tga_prix_demande || {})[p])) ? `<tr><td>TGA au prix demandé</td>${["A", "B", "C"].map((p) => `<td>${pct((im.tga_prix_demande || {})[p])}</td>`).join("")}</tr>` : ""}
    </table>
    <iframe class="det-plan" title="Carte" loading="lazy" referrerpolicy="no-referrer" data-src="https://maps.google.com/maps?q=${q}&z=15&output=embed"></iframe>
    ${payable}
@@ -341,9 +362,289 @@ function carte(im) {
    <a class="btn" target="_blank" rel="noopener" ${im.url ? `href="${esc(im.url)}"` : 'aria-disabled="true"'}>Centris</a>
    <a class="btn p" target="_blank" rel="noopener" ${lienCr ? `href="${lienCr}"` : 'aria-disabled="true" title="Lien Drive pas encore connu"'}>Cruncher</a>
    <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">Carte</a>
+   <button class="btn" type="button" data-partager="${esc(im.id || "")}" title="Envoyer cette fiche (image, lien Centris, copie du Cruncher)">Partager</button>
    <span class="score">Score : ${estNb(im.score) ? esc(im.score) : "à venir"}</span>
   </div>
  </article>`;
+}
+
+// ---------------------------------------------------------------- partage d'une fiche (image + pièces jointes)
+// « Partager » sur une carte ouvre un panneau : la fiche est dessinée en image dans la page (avec le tableau
+// du détail et un plan), puis remise au menu de partage du téléphone (Messenger, WhatsApp, texto…), avec le
+// lien Centris et, au choix, une COPIE du Cruncher en pièce jointe (jamais un lien Drive) et les notes.
+// La personne qui reçoit n'a besoin d'aucun compte ni d'aucun accès au Drive. Aucun calcul : mêmes chiffres
+// que la carte. Plan : OpenStreetMap (l'adresse de l'immeuble y est envoyée pour la situer).
+const MIME_XLSM = "application/vnd.ms-excel.sheet.macroEnabled.12";
+// Notes de François par immeuble (clé = id). Rempli par l'étape « Notes » du chantier (feuille Radar_Saisies).
+let saisies = {};
+const noteDe = (im) => String((saisies[im.id] && saisies[im.id].note) || "").trim();
+const adresseCourte = (im) => String(im.adresse || "Adresse inconnue").replace(/,\s*Montr[ée]al\s*$/i, "");
+
+function couper(ctx, txt, larg) {
+  const lignes = [];
+  for (const par of String(txt).split(/\n/)) {
+    let l = "";
+    for (const m of par.split(/\s+/).filter(Boolean)) {
+      const e = l ? l + " " + m : m;
+      if (l && ctx.measureText(e).width > larg) { lignes.push(l); l = m; } else l = e;
+    }
+    lignes.push(l);
+  }
+  return lignes;
+}
+
+// ---- plan (OpenStreetMap) : adresse -> coordonnées -> tuiles. Échec = image sans plan, jamais de blocage.
+const cacheGeo = {};
+async function situer(adresse) {
+  if (cacheGeo[adresse]) return cacheGeo[adresse];
+  const propre = adresse.replace(/^(\d+)\s*,/, "$1");
+  const essais = [...new Set([propre, propre.replace(/^(\d+)\s*[-–]\s*\d+/, "$1")])];
+  for (const a of essais) {
+    try {
+      const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=ca&q="
+        + encodeURIComponent(a + ", Québec, Canada"));
+      const j = r.ok ? await r.json() : [];
+      if (j[0] && isFinite(+j[0].lat) && isFinite(+j[0].lon)) return (cacheGeo[adresse] = {lat: +j[0].lat, lon: +j[0].lon});
+    } catch (e) {}
+  }
+  return null;
+}
+async function chargerPlan(adresse, l, h) {
+  const pt = await situer(adresse);
+  if (!pt) return null;
+  const Z = 16, T = 128, n = 2 ** Z, rad = pt.lat * Math.PI / 180;   // tuiles de 256 px dessinées à 128 : net à l'échelle 2
+  const px = (pt.lon + 180) / 360 * n * T, py = (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * n * T;
+  const x0 = px - l / 2, y0 = py - h / 2, attente = [];
+  for (let tx = Math.floor(x0 / T); tx * T < x0 + l; tx++) for (let ty = Math.floor(y0 / T); ty * T < y0 + h; ty++)
+    attente.push(new Promise((ok) => {
+      const i = new Image(); i.crossOrigin = "anonymous";
+      i.onload = () => ok({i, dx: tx * T - x0, dy: ty * T - y0}); i.onerror = () => ok(null);
+      i.src = `https://tile.openstreetmap.org/${Z}/${tx}/${ty}.png`;
+    }));
+  const tuiles = await Promise.all(attente);
+  return tuiles.every(Boolean) ? {tuiles, T, l, h} : null;
+}
+const delai = (ms) => new Promise((ok) => setTimeout(() => ok(null), ms));
+
+// ---- dessin de la fiche. opts : {plan, notes}
+const PLAN_H = 190;
+function dessinerFiche(ctx, im, L, opts) {
+  opts = opts || {};
+  const C = {ink: "#1d2330", mute: "#6b7280", line: "#e5e7eb", bg: "#f6f7f9", pos: "#0f7b4b", posbg: "#e6f4ec", neg: "#b42318", negbg: "#fdecea", acc: "#2446a8", warnbg: "#fff4de"};
+  const P = 24, larg = L - 2 * P, police = 'system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
+  const f = (taille, poids) => { ctx.font = `${poids || 400} ${taille}px ${police}`; };
+  const chemin = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
+  const boite = (x, y, w, h, couleur) => { ctx.fillStyle = couleur; chemin(x, y, w, h, 8); ctx.fill(); };
+  // Écrit un texte en réduisant la taille s'il dépasse la largeur donnée.
+  const ecrire = (txt, x, y, taille, poids, couleur, max, aligne) => {
+    let t = taille; f(t, poids);
+    while (max && t > 9 && ctx.measureText(txt).width > max) { t -= 0.5; f(t, poids); }
+    ctx.fillStyle = couleur; ctx.textAlign = aligne || "left"; ctx.fillText(txt, x, y);
+  };
+  const paragraphe = (txt, x, y, taille, poids, couleur, max, interligne) => {
+    f(taille, poids); ctx.fillStyle = couleur; ctx.textAlign = "left";
+    for (const l of couper(ctx, txt, max)) { ctx.fillText(l, x, y); y += interligne; }
+    return y;
+  };
+  const titre = (txt, y) => { ecrire(txt, P, y, 10.5, 650, C.mute); return y + 16; };
+  const ve = im.valeur_economique || {}, ec = im.ecart || {}, mrb = im.mrb || {}, lo = im.loyer_moyen_porte;
+  ctx.textBaseline = "alphabetic";
+  let y = P + 12;
+
+  // Bandeau
+  ecrire("RADAR IMMOBILIER", P, y, 11, 650, C.mute);
+  ecrire([im.provenance === "centris" && im.no_inscription ? "Centris " + im.no_inscription : "",
+          "analysé le " + dateCourte(im.date_analyse)].filter(Boolean).join(" · "), L - P, y, 11, 400, C.mute, larg - 130, "right");
+  y += 30;
+
+  // Adresse, secteur, portes
+  y = paragraphe(adresseCourte(im), P, y, 22, 650, C.ink, larg, 27);
+  y = paragraphe((im.secteur || "Secteur inconnu") + " · " + (estNb(im.nb_logements) ? im.nb_logements + " portes" : "portes ?")
+    + typo(im.typologie), P, y - 6, 13, 400, C.mute, larg, 18) + 2;
+
+  // Prix demandé, prix par porte, MRB
+  const esp = 8, l1 = (larg - 2 * esp) * 0.41, l2 = (larg - 2 * esp) * 0.33, l3 = larg - 2 * esp - l1 - l2, h = 66;
+  [[P, l1, "Prix demandé", $$(im.prix_demande), 21, ""],
+   [P + l1 + esp, l2, "Prix par porte", $$(im.prix_par_porte_demande), 18, ""],
+   [P + l1 + l2 + 2 * esp, l3, "MRB", estNb(mrb.A) ? nb1.format(mrb.A) : "—", 18, estNb(mrb.C) ? "potentiel : " + nb1.format(mrb.C) : ""],
+  ].forEach(([x, w, lib, val, taille, note]) => {
+    boite(x, y, w, h, C.bg);
+    ecrire(lib, x + 10, y + 19, 11, 400, C.mute, w - 20);
+    ecrire(val, x + 10, y + 43, taille, 700, C.ink, w - 20);
+    if (note) ecrire(note, x + 10, y + 58, 10.5, 400, C.mute, w - 20);
+  });
+  y += h + 26;
+
+  // Valeur économique A / B / C et écarts
+  const lc = (larg - 2 * esp) / 3, hE = 52, aEcart = estNb(ec.A) || estNb(ec.C);
+  [["A · actuel", ve.A, ec.A], ["B · converti", ve.B, null], ["C · final", ve.C, ec.C]].forEach(([lib, val, ecart], i) => {
+    const x = P + i * (lc + esp), cx = x + lc / 2;
+    ecrire(lib, cx, y, 11, 400, C.mute, lc - 8, "center");
+    ecrire($mille(val), cx, y + 24, 17, 650, C.ink, lc - 8, "center");
+    if (estNb(ecart)) {
+      boite(x, y + 36, lc, hE, ecart >= 0 ? C.posbg : C.negbg);
+      ecrire("Écart avec le prix demandé", cx, y + 54, 9.5, 400, C.mute, lc - 10, "center");
+      ecrire(signe$(ecart), cx, y + 76, 17, 700, ecart >= 0 ? C.pos : C.neg, lc - 10, "center");
+    }
+  });
+  y += 36 + (aEcart ? hE + 26 : 14);
+
+  // Microfiche (la ligne du loyer est refaite depuis le champ structuré, comme sur la carte)
+  const loyer = lo && estNb(lo.A)
+    ? `Loyer moyen par porte : ${$$(lo.A)}/mois actuel` + (estNb(lo.C) ? ` → ${$$(lo.C)}/mois potentiel (${estNb(lo.ecart) ? (lo.ecart >= 0 ? "+" : "−") + $$(Math.abs(lo.ecart)) : "—"})` : "")
+    : null;
+  const mf = (im.microfiche || []).map((t) => (/^Loyer moyen par porte/.test(t) && loyer) ? loyer : String(t));
+  for (const l of mf) {
+    ecrire("•", P + 2, y, 13, 400, C.ink);
+    y = paragraphe(l, P + 16, y, 13, 400, C.ink, larg - 16, 18.5) + 4;
+  }
+  if (mf.length) y += 12;
+
+  // Tableau du détail : revenus, dépenses, RNO, facteur de dépenses (+ TGA au prix demandé quand la machine le fournit)
+  const Pt = im.portraits || {}, tg = im.tga_prix_demande || {};
+  const aPortrait = ["A", "B", "C"].some((p) => Pt[p] && typeof Pt[p] === "object");
+  if (aPortrait) {
+    const n0 = (v) => estNb(v) ? nbFr.format(v) + " $" : "—", colL = larg * 0.37, colW = (larg - colL) / 3, hl = 25;
+    const lignes = [["Revenus bruts", (p) => n0((Pt[p] || {}).revenus_bruts)], ["Dépenses", (p) => n0((Pt[p] || {}).depenses_totales)],
+                    ["Revenu net (RNO)", (p) => n0((Pt[p] || {}).rno)], ["Facteur de dépenses", (p) => pct((Pt[p] || {}).facteur_depenses)]];
+    if (["A", "B", "C"].some((p) => estNb(tg[p]))) lignes.push(["TGA au prix demandé", (p) => pct(tg[p])]);
+    y = titre("DÉTAIL", y);
+    ["A · actuel", "B · converti", "C · final"].forEach((t, i) => ecrire(t, P + colL + (i + 1) * colW, y, 10.5, 400, C.mute, colW - 6, "right"));
+    y += 8;
+    for (const [lib, val] of lignes) {
+      ctx.fillStyle = C.line; ctx.fillRect(P, y, larg, 1);
+      ecrire(lib, P, y + 17, 12.5, 400, C.ink, colL - 6);
+      ["A", "B", "C"].forEach((p, i) => ecrire(val(p), P + colL + (i + 1) * colW, y + 17, 12.5, 500, C.ink, colW - 6, "right"));
+      y += hl;
+    }
+    y += 16;
+  }
+
+  // Plan
+  if (opts.plan) {
+    const pl = opts.plan;
+    ctx.save(); chemin(P, y, larg, pl.h, 10); ctx.clip();
+    ctx.fillStyle = C.bg; ctx.fillRect(P, y, larg, pl.h);
+    for (const t of pl.tuiles) ctx.drawImage(t.i, P + t.dx, y + t.dy, pl.T, pl.T);
+    const cx = P + larg / 2, cy = y + pl.h / 2;                       // repère de l'immeuble
+    ctx.beginPath(); ctx.arc(cx, cy, 15, 0, 2 * Math.PI); ctx.fillStyle = "rgba(180,35,24,.18)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 6.5, 0, 2 * Math.PI); ctx.fillStyle = C.neg; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = "#fff"; ctx.stroke();
+    f(9, 400); const cr = "© OpenStreetMap", lw = ctx.measureText(cr).width + 10;
+    ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.fillRect(P + larg - lw, y + pl.h - 16, lw, 16);
+    ctx.fillStyle = C.mute; ctx.textAlign = "right"; ctx.fillText(cr, P + larg - 5, y + pl.h - 5);
+    ctx.restore();
+    ctx.lineWidth = 1; ctx.strokeStyle = C.line; chemin(P + .5, y + .5, larg - 1, pl.h - 1, 10); ctx.stroke();
+    y += pl.h + 24;
+  }
+
+  // Notes (seulement si François choisit de les joindre)
+  if (opts.notes) {
+    y = titre("NOTES", y);
+    f(12.5, 400);
+    const lg = couper(ctx, opts.notes, larg - 24), hn = lg.length * 18 + 18;
+    boite(P, y - 4, larg, hn, C.warnbg);
+    paragraphe(opts.notes, P + 12, y + 15, 12.5, 400, C.ink, larg - 24, 18);
+    y += hn + 18;
+  }
+
+  // Pied
+  ctx.fillStyle = C.line; ctx.fillRect(P, y - 6, larg, 1); y += 12;
+  y = paragraphe("Valeur économique = revenu net ÷ TGA" + (estNb(ve.tga) ? " de " + pct(ve.tga) : "") + ". Écart = valeur économique − prix demandé, arrondi au millier."
+    + " MRB = prix demandé ÷ revenus bruts. Estimation préliminaire, à valider.", P, y, 10.5, 400, C.mute, larg, 15);
+  return y + P - 12;
+}
+function imageFiche(im, opts) {
+  const L = 540, ECHELLE = 2, brouillon = document.createElement("canvas");
+  brouillon.width = 8; brouillon.height = 8;
+  let ctx = brouillon.getContext("2d");
+  const haut = Math.ceil(dessinerFiche(ctx, im, L, Object.assign({}, opts, {plan: opts && opts.plan ? {tuiles: [], T: 0, h: opts.plan.h} : null})));  // 1er passage : mesure
+  const toile = document.createElement("canvas");
+  toile.width = L * ECHELLE; toile.height = haut * ECHELLE;
+  ctx = toile.getContext("2d"); ctx.scale(ECHELLE, ECHELLE);
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, L, haut);
+  dessinerFiche(ctx, im, L, opts);
+  // Conversion immédiate (sans attente) : le menu de partage doit s'ouvrir dans le même geste.
+  const brut = atob(toile.toDataURL("image/png").split(",")[1]), octets = new Uint8Array(brut.length);
+  for (let i = 0; i < brut.length; i++) octets[i] = brut.charCodeAt(i);
+  return new Blob([octets], {type: "image/png"});
+}
+
+// ---- panneau de partage
+let pp = null;   // partage en cours : {im, plan, planFini, cruncher, crFini, crErreur, image}
+const nomSur = (s) => String(s).replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+const tailleMo = (o) => nb1.format(o / 1048576) + " Mo";
+function majPartage() {
+  const e = pp; if (!e) return;
+  const avecNotes = e.note && $("pp-notes").checked, avecCr = e.crPossible && $("pp-cr").checked;
+  try { e.image = imageFiche(e.im, {plan: e.plan, notes: avecNotes ? e.note : ""}); } catch (err) { e.image = null; }
+  if (e.urlApercu) URL.revokeObjectURL(e.urlApercu);
+  e.urlApercu = e.image ? URL.createObjectURL(e.image) : ""; $("pp-apercu").src = e.urlApercu;
+  const pret = e.image && e.planFini && (!avecCr || e.crFini);
+  $("pp-envoyer").disabled = !pret;
+  let t = "";
+  if (!e.image) t = "L'image n'a pas pu être produite.";
+  else if (!e.planFini) t = "Préparation du plan…";
+  else if (avecCr && !e.crFini) t = "Préparation de la copie du Cruncher…";
+  else {
+    const p = ["Image de la fiche"];
+    if (avecCr && e.cruncher) p.push("copie du Cruncher (" + tailleMo(e.cruncher.size) + ")");
+    if (e.im.url) p.push("lien Centris");
+    t = "Prêt : " + p.join(" + ") + "." + (e.plan ? "" : " Plan indisponible pour cette adresse.");
+    if (avecCr && !e.cruncher) t += " ⚠ Cruncher non joint : " + (e.crErreur || "fichier introuvable") + ".";
+  }
+  if (e.avis) t = e.avis;
+  $("pp-etat").textContent = t;
+}
+function ouvrirPartage(im) {
+  const cr = im.cruncher || {}, e = pp = {im, note: noteDe(im), plan: null, planFini: false, cruncher: null, crFini: false, crErreur: "", crPossible: !!(cr.drive_id && jeton)};
+  $("pp-titre").textContent = "Partager — " + adresseCourte(im);
+  $("pp-l-notes").hidden = !e.note; $("pp-notes").checked = true;
+  $("pp-cr").checked = e.crPossible; $("pp-cr").disabled = !e.crPossible;
+  $("pp-l-cr").style.opacity = e.crPossible ? "" : ".5";
+  majPartage();
+  const d = $("pp"); if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+  // Plan : au plus 7 secondes, puis on continue sans.
+  Promise.race([chargerPlan(String(im.adresse || ""), 540 - 48, PLAN_H).catch(() => null), delai(7000)])
+    .then((p) => { if (pp !== e) return; e.plan = p; e.planFini = true; majPartage(); });
+  // Copie du Cruncher : téléchargée depuis le Drive de François, pour être envoyée en pièce jointe.
+  if (e.crPossible) {
+    drive(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(cr.drive_id)}?alt=media&supportsAllDrives=true`)
+      .then((r) => r.blob())
+      .then((b) => { e.cruncher = new File([b], nomSur(cr.nom || "Cruncher.xlsm"), {type: b.type && b.type !== "application/octet-stream" ? b.type : MIME_XLSM}); })
+      .catch((err) => { e.crErreur = err && err.reconnecter ? "session Google expirée, reconnecte-toi" : "le fichier n'a pas pu être lu dans le Drive"; })
+      .then(() => { e.crFini = true; if (pp === e) majPartage(); });
+  }
+}
+function fermerPartage() {
+  if (pp && pp.urlApercu) URL.revokeObjectURL(pp.urlApercu);
+  pp = null; const d = $("pp"); if (d.close) d.close(); else d.removeAttribute("open");
+}
+function telechargerFichier(fichier) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(fichier); a.download = fichier.name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+}
+// Appelé directement par le clic sur « Envoyer » : tout est déjà prêt, le menu de partage s'ouvre dans le même geste.
+async function envoyerPartage() {
+  const e = pp; if (!e || !e.image) return;
+  const im = e.im, courte = adresseCourte(im);
+  const image = new File([e.image], "Fiche - " + nomSur(courte) + ".png", {type: "image/png"});
+  const cr = e.crPossible && $("pp-cr").checked ? e.cruncher : null;
+  const texte = courte + (im.url ? "\n" + im.url : "");
+  const peut = (f) => { try { return !!(navigator.canShare && navigator.share && navigator.canShare({files: f})); } catch (err) { return false; } };
+  const dire = (t) => { e.avis = t; if (pp === e) majPartage(); };
+  if (peut([image])) {                                                             // téléphone
+    const tout = cr && peut([image, cr]);
+    if (cr && !tout) telechargerFichier(cr);
+    try { await navigator.share({files: tout ? [image, cr] : [image], title: courte, text: texte}); }
+    catch (err) { if (err && err.name === "AbortError") return; dire("Le partage a échoué (" + (err && err.name || "erreur") + ")."); return; }
+    if (cr && !tout) dire("Fiche envoyée. Ce téléphone refuse le fichier Excel dans ce menu : la copie du Cruncher est dans tes téléchargements, à joindre à la main.");
+    else fermerPartage();
+    return;
+  }
+  telechargerFichier(image); if (cr) telechargerFichier(cr);                         // ordinateur
+  let copie = false; try { if (im.url) { await navigator.clipboard.writeText(texte); copie = true; } } catch (err) {}
+  dire((cr ? "Image et copie du Cruncher téléchargées" : "Image téléchargée") + (copie ? " · lien Centris copié." : "."));
 }
 
 function afficherJournal() {
@@ -368,6 +669,17 @@ $("btn-partager").addEventListener("click", async () => {
   }
   try { await navigator.clipboard.writeText(LIEN_PARTAGE); dire("Lien copié"); } catch (e) { dire("Échec"); }
 });
+// Partager une fiche : bouton « Partager » de chaque carte -> panneau de partage.
+$("grille").addEventListener("click", (e) => {
+  const b = e.target.closest && e.target.closest("[data-partager]");
+  if (!b) return;
+  const im = ((donnees && donnees.immeubles) || []).find((i) => String(i.id || "") === b.dataset.partager);
+  if (im) ouvrirPartage(im);
+});
+$("pp-envoyer").addEventListener("click", envoyerPartage);
+$("pp-annuler").addEventListener("click", fermerPartage);
+$("pp").addEventListener("cancel", () => { if (pp && pp.urlApercu) URL.revokeObjectURL(pp.urlApercu); pp = null; });
+["pp-notes", "pp-cr"].forEach((id) => $(id).addEventListener("change", () => { if (pp) { pp.avis = ""; majPartage(); } }));
 const basculerJournal = () => { $("panneau-journal").hidden = !$("panneau-journal").hidden; };
 $("etat").addEventListener("click", basculerJournal);
 // La petite carte Google Maps ne se charge qu'à l'ouverture du détail.
