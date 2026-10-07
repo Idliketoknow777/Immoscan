@@ -61,6 +61,7 @@ table.det{width:100%;border-collapse:collapse;margin-top:6px}
 .flag{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:6px 8px;margin:6px 0 0}
 .accueil{max-width:520px;margin:48px auto;padding:24px 16px;text-align:center;grid-column:1/-1}
 .accueil p{color:var(--mute)}
+.lienb{background:none;border:0;padding:6px;color:var(--mute);font:inherit;font-size:12px;text-decoration:underline;cursor:pointer}
 .panneau{max-width:1200px;margin:12px auto 0;padding:0 16px}
 .panneau .boite{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13px}
 .panneau .run{border-bottom:1px solid var(--line);padding:8px 0}.panneau .run:last-child{border:0}
@@ -115,6 +116,7 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
  <div class="accueil" id="accueil">
   <p id="message">Les données du Radar sont dans ton Google Drive. Connecte-toi pour les afficher.</p>
   <button class="btn p" id="btn-connexion" type="button">Se connecter avec Google</button>
+  <p><button class="lienb" id="btn-autre-compte" type="button" hidden>Utiliser un autre compte</button></p>
  </div>
 </main>
 <p class="note" id="pied" hidden></p>
@@ -169,19 +171,33 @@ const dateHeure = (iso) => {
 const aujourdhui = () => new Date().toLocaleDateString("en-CA");  // AAAA-MM-JJ, heure locale
 
 // ---------------------------------------------------------------- connexion Google
-function message(txt) { $("message").textContent = txt; $("accueil").hidden = false; }
+function message(txt) { if (!$("message")) return; $("message").textContent = txt; $("accueil").hidden = false; }
+
+// Rester connecté (chantier Portail, étape 2 — 7 oct. 2026). Sans serveur, Google ne remet à une page que des
+// jetons d'une heure. Trois moyens, sans aucun droit nouveau :
+//  1. le jeton est redemandé « en discret » 5 minutes avant l'échéance (une fenêtre Google s'ouvre et se referme
+//     seule) ; si le navigateur bloque cette fenêtre, la demande part au prochain toucher de la page ;
+//  2. l'adresse du compte est retenue dans le navigateur (ce n'est pas un secret) : Google ne redemande plus
+//     de choisir le compte ;
+//  3. au retour après expiration : un essai sans clic, sinon un seul bouton.
+const CLE_JETON = "radar_jeton", CLE_COMPTE = "radar_compte";
+const MARGE_RENOUV = 5 * 60000;
+let expireA = 0, attenteJeton = null, minuterie = null, dernierEssai = 0, chargement = false;
 
 function lireJetonMemorise() {
   try {
-    const j = JSON.parse(sessionStorage.getItem("radar_jeton") || "null");
-    if (j && j.expire > Date.now() + 60000) return j.valeur;
+    const j = JSON.parse(sessionStorage.getItem(CLE_JETON) || "null");
+    if (j && j.expire > Date.now() + 60000) { expireA = j.expire; return j.valeur; }
   } catch (e) {}
   return null;
 }
 function memoriserJeton(valeur, secondes) {
-  try { sessionStorage.setItem("radar_jeton", JSON.stringify({valeur, expire: Date.now() + secondes * 1000})); } catch (e) {}
+  expireA = Date.now() + secondes * 1000;
+  try { sessionStorage.setItem(CLE_JETON, JSON.stringify({valeur, expire: expireA})); } catch (e) {}
 }
-function oublierJeton() { jeton = null; try { sessionStorage.removeItem("radar_jeton"); } catch (e) {} }
+function oublierJeton() { jeton = null; expireA = 0; clearTimeout(minuterie); try { sessionStorage.removeItem(CLE_JETON); } catch (e) {} }
+function compteMemorise() { try { return localStorage.getItem(CLE_COMPTE) || ""; } catch (e) { return ""; } }
+function memoriserCompte(c) { try { if (c) localStorage.setItem(CLE_COMPTE, c); else localStorage.removeItem(CLE_COMPTE); } catch (e) {} }
 
 function chargerGIS() {
   return new Promise((ok, ko) => {
@@ -193,25 +209,79 @@ function chargerGIS() {
   });
 }
 
-async function connecter() {
-  if (!CLIENT_ID) { message("Portail pas encore relié à Google : l'identifiant client OAuth reste à installer (voir la fiche du chantier)."); return; }
-  try { await chargerGIS(); } catch (e) { message(e.message); return; }
-  if (!clientJeton) {
-    clientJeton = google.accounts.oauth2.initTokenClient({
+// Une seule demande à la fois. discret = renouvellement (on n'attend pas longtemps) ; choisir = changer de compte.
+function demanderJeton(discret, choisir) {
+  if (attenteJeton) return attenteJeton;
+  dernierEssai = Date.now();
+  const p = chargerGIS().then(() => new Promise((ok, ko) => {
+    const compte = choisir ? "" : compteMemorise();
+    let tardif = false;
+    const garde = setTimeout(() => { tardif = true; ko(Object.assign(new Error("Google n'a pas répondu."), {type: "delai"})); }, discret ? 20000 : 180000);
+    const client = google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID, scope: PORTEE,
       callback: (r) => {
-        if (r.error) { message("Connexion refusée ou annulée (" + r.error + ")."); return; }
-        jeton = r.access_token; memoriserJeton(jeton, Number(r.expires_in) || 3600); charger();
+        clearTimeout(garde);
+        if (r.error || !r.access_token) return ko(Object.assign(new Error("Connexion refusée ou annulée (" + (r.error || "sans jeton") + ")."), {type: "refus"}));
+        jeton = r.access_token; memoriserJeton(jeton, Number(r.expires_in) || 3600); dernierEssai = 0; planifierRenouvellement(); ok(jeton);
+        if (tardif && !donnees) charger();
+      },
+      error_callback: (e) => {
+        clearTimeout(garde);
+        const type = (e && e.type) || "fenetre";
+        if (type === "popup_failed_to_open") dernierEssai = 0;   // bloquée : le prochain toucher réessaie tout de suite
+        ko(Object.assign(new Error(type === "popup_failed_to_open" ? "Le navigateur a bloqué la fenêtre Google. Touche le bouton pour continuer."
+          : type === "popup_closed" ? "Fenêtre Google fermée avant la fin." : "La connexion Google n'a pas abouti."), {type}));
       },
     });
-  }
-  clientJeton.requestAccessToken();
+    client.requestAccessToken(choisir ? {prompt: "select_account"} : compte ? {prompt: "", hint: compte} : {});
+  }));
+  attenteJeton = p;
+  const fin = () => { if (attenteJeton === p) attenteJeton = null; };
+  p.then(fin, fin);
+  return p;
+}
+
+function planifierRenouvellement() {
+  clearTimeout(minuterie);
+  if (!jeton || !expireA) return;
+  minuterie = setTimeout(renouveler, Math.max(expireA - Date.now() - MARGE_RENOUV, 1000));
+}
+// Appelé par la minuterie ET à chaque toucher de la page (un toucher est ce qui autorise la fenêtre Google).
+function renouveler() {
+  if (!jeton || document.hidden || !compteMemorise()) return;
+  if (expireA - Date.now() > 2 * MARGE_RENOUV || Date.now() - dernierEssai < 60000) return;
+  demanderJeton(true).catch(() => {});
+}
+
+function ecranConnexion(txt) {
+  const c = compteMemorise();
+  message(txt);
+  if (!$("btn-connexion")) return;
+  $("btn-connexion").hidden = false; $("btn-connexion").textContent = c ? "Continuer (" + c + ")" : "Se connecter avec Google";
+  $("btn-autre-compte").hidden = !c;
+}
+async function connecter(choisir) {
+  if (!CLIENT_ID) { message("Portail pas encore relié à Google : l'identifiant client OAuth reste à installer (voir la fiche du chantier)."); return; }
+  try { await demanderJeton(false, choisir === true); } catch (e) { ecranConnexion(e.message); return; }
+  charger();
+}
+function apprendreCompte() {
+  drive("https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)").then((r) => r.json())
+    .then((j) => { if (j && j.user && j.user.emailAddress) memoriserCompte(j.user.emailAddress); }).catch(() => {});
 }
 
 // ---------------------------------------------------------------- lecture Drive (lecture seule)
-async function drive(url) {
+async function drive(url, repris) {
+  if (attenteJeton) await attenteJeton.catch(() => {});
   const r = await fetch(url, {headers: {Authorization: "Bearer " + jeton}});
-  if (r.status === 401) { oublierJeton(); throw Object.assign(new Error("Session expirée : reconnecte-toi."), {reconnecter: true}); }
+  if (r.status === 401) {
+    if (!repris && compteMemorise()) {
+      let ok = false;
+      try { await demanderJeton(true); ok = true; } catch (e) {}
+      if (ok) return drive(url, true);
+    }
+    oublierJeton(); throw Object.assign(new Error("Session expirée."), {reconnecter: true});
+  }
   if (r.status === 403 || r.status === 404) throw new Error("Ce compte Google n'a pas accès aux données du Radar.");
   if (!r.ok) throw new Error("Drive a répondu " + r.status + ".");
   return r;
@@ -224,15 +294,18 @@ async function lireFichier(nom) {
 }
 
 async function charger() {
-  message("Lecture des données du Radar…"); $("btn-connexion").hidden = true;
+  if (chargement) return;
+  chargement = true;
+  message("Lecture des données du Radar…"); $("btn-connexion").hidden = true; $("btn-autre-compte").hidden = true;
   try {
     [donnees, journal] = await Promise.all([lireFichier(NOM_DONNEES), lireFichier(NOM_JOURNAL).catch(() => null)]);
     if (!donnees) throw new Error("donnees.json introuvable dans « 03 - Donnees machine ».");
     afficher();
+    apprendreCompte();
   } catch (e) {
-    $("btn-connexion").hidden = false; $("btn-connexion").textContent = e.reconnecter ? "Se reconnecter" : "Réessayer";
-    message(e.message);
-  }
+    if (e.reconnecter) ecranConnexion("Session expirée. Un toucher suffit pour revenir.");
+    else { $("btn-connexion").hidden = false; $("btn-connexion").textContent = "Réessayer"; $("btn-autre-compte").hidden = !compteMemorise(); message(e.message); }
+  } finally { chargement = false; }
 }
 
 // ---------------------------------------------------------------- affichage
@@ -657,6 +730,9 @@ function afficherJournal() {
 
 // ---------------------------------------------------------------- événements
 $("btn-connexion").addEventListener("click", () => (jeton ? charger() : connecter()));
+$("btn-autre-compte").addEventListener("click", () => { oublierJeton(); memoriserCompte(""); connecter(true); });
+document.addEventListener("click", renouveler, true);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) planifierRenouvellement(); });
 $("tri").addEventListener("change", afficherCartes);
 $("secteur").addEventListener("change", afficherCartes);
 // Partager : menu de partage du téléphone (Messenger, WhatsApp, texto…) ; sinon, copie du lien.
@@ -689,7 +765,12 @@ document.addEventListener("toggle", (e) => {
 }, true);
 
 jeton = lireJetonMemorise();
-if (jeton) charger();
+if (jeton) { planifierRenouvellement(); charger(); if (compteMemorise()) chargerGIS().catch(() => {}); }
+else if (CLIENT_ID && compteMemorise()) {
+  // Retour après expiration : un essai sans clic (réussit si le navigateur laisse passer la fenêtre), sinon un bouton.
+  ecranConnexion("Session expirée. Un toucher suffit pour revenir.");
+  demanderJeton(true).then(charger, () => {});
+}
 else if (!CLIENT_ID) message("Portail pas encore relié à Google : l'identifiant client OAuth reste à installer (voir la fiche du chantier).");
 </script>
 </body>
