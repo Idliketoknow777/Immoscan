@@ -1,1375 +1,696 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="ImmoScan"/>
-  <meta name="theme-color" content="#080c14"/>
-  <title>ImmoScan</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Epilogue:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
-  <style>
-    :root {
-      --bg:#080c14; --s1:#0f1520; --s2:#151e2e; --border:#1c2a3f;
-      --accent:#3b82f6; --sky:#7dd3fc; --gold:#fbbf24; --green:#34d399;
-      --red:#f87171; --text:#f0f4ff; --muted:#4a5e7a; --r:12px;
-    }
-    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-    html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Epilogue',sans-serif;overflow:hidden}
-    .shell{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto}
-    header{padding:54px 18px 14px;background:linear-gradient(180deg,#0b1120 0%,transparent 100%);flex-shrink:0;position:relative;z-index:20}
-    .hrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-    .wordmark{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;letter-spacing:-1px;background:linear-gradient(120deg,var(--sky),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-    .icon-btn{width:38px;height:38px;border-radius:10px;background:var(--s2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px}
-    .icon-btn:active{background:var(--border)}
-    .sbar{position:relative}
-    .sbar-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none}
-    #addrInput{width:100%;background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Epilogue',sans-serif;font-size:15px;padding:13px 44px 13px 40px;outline:none;transition:.2s}
-    #addrInput:focus{border-color:var(--accent)}
-    #addrInput::placeholder{color:var(--muted)}
-    .xclear{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--muted);cursor:pointer;font-size:14px;display:none;padding:4px}
-    .ac{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);z-index:100;box-shadow:0 12px 40px rgba(0,0,0,.5);display:none;overflow:hidden}
-    .ac.show{display:block}
-    .ac-item{padding:12px 15px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px}
-    .ac-item:last-child{border-bottom:none}
-    .ac-item:active{background:var(--s2)}
-    .ac-pin{flex-shrink:0;margin-top:1px}
-    .ac-main{font-weight:500;color:var(--text)}
-    .ac-sub{font-size:11px;color:var(--muted);margin-top:2px}
-    .main{flex:1;overflow-y:auto;padding:0 16px 96px;-webkit-overflow-scrolling:touch}
-    .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:62vh;text-align:center;gap:14px;animation:fadeUp .5s ease}
-    .empty-ico{width:76px;height:76px;background:var(--s1);border:1px solid var(--border);border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:34px}
-    .empty h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:700}
-    .empty p{font-size:13px;color:var(--muted);line-height:1.65;max-width:250px}
-    .config-warn{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--gold);line-height:1.5;cursor:pointer;width:100%;text-align:center}
-    .loading{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:62vh;gap:18px;animation:fadeUp .3s ease}
-    .loading.show{display:flex}
-    .spinner{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite}
-    .steps{display:flex;flex-direction:column;gap:8px;width:230px}
-    .step{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);transition:.3s}
-    .step.active{color:var(--sky)} .step.done{color:var(--green)}
-    .step-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
-    .report{display:none;flex-direction:column;gap:12px;padding-top:14px;animation:fadeUp .4s ease}
-    .report.show{display:flex}
-    .sv{border-radius:var(--r);overflow:hidden;height:190px;background:var(--s1);position:relative}
-    .sv img{width:100%;height:100%;object-fit:cover}
-    .sv-tag{position:absolute;bottom:9px;left:9px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border-radius:6px;padding:3px 8px;font-size:10px;color:rgba(255,255,255,.65)}
-    .sv-none{display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:6px;color:var(--muted);font-size:13px}
-    .addr-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
-    .addr-card h2{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;line-height:1.3}
-    .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-    .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
-    .badge-z{background:rgba(59,130,246,.15);color:var(--sky)}
-    .badge-t{background:rgba(251,191,36,.15);color:var(--gold)}
-    .badge-y{background:rgba(52,211,153,.15);color:var(--green)}
-    .ai-card{background:linear-gradient(135deg,#0c1e3a,#0f1520);border:1px solid rgba(59,130,246,.25);border-radius:var(--r);padding:15px;position:relative;overflow:hidden}
-    .ai-card::before{content:'';position:absolute;top:-50px;right:-50px;width:140px;height:140px;background:radial-gradient(circle,rgba(59,130,246,.1),transparent 70%);pointer-events:none}
-    .ai-head{display:flex;align-items:center;gap:9px;margin-bottom:12px}
-    .ai-ico{width:28px;height:28px;background:linear-gradient(135deg,var(--accent),#818cf8);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-    .ai-head h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--sky)}
-    .score-row{display:flex;align-items:center;gap:12px;background:rgba(0,0,0,.2);border-radius:9px;padding:10px 13px;margin-bottom:12px}
-    .score-ring{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:17px;font-weight:800;flex-shrink:0}
-    .ring-h{background:rgba(52,211,153,.15);color:var(--green);border:2px solid var(--green)}
-    .ring-m{background:rgba(251,191,36,.15);color:var(--gold);border:2px solid var(--gold)}
-    .ring-l{background:rgba(74,94,122,.15);color:var(--muted);border:2px solid var(--muted)}
-    .score-lbl{font-family:'Syne',sans-serif;font-size:13px;font-weight:700}
-    .score-sub{font-size:11px;color:var(--muted);margin-top:2px}
-    .ai-summary{font-size:13px;color:#94a3b8;line-height:1.65}
-    .flags{display:flex;flex-direction:column;gap:7px;margin-top:11px}
-    .flag{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#94a3b8;line-height:1.45}
-    .flag-ico{flex-shrink:0;margin-top:1px}
-    .dsec{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-    .dsec-head{display:flex;align-items:center;gap:9px;padding:11px 15px;border-bottom:1px solid var(--border);background:var(--s2)}
-    .dsec-head h3{font-family:'Syne',sans-serif;font-size:12px;font-weight:700}
-    .dsec-head .src{margin-left:auto;font-size:10px;color:var(--muted)}
-    .drow{display:flex;justify-content:space-between;align-items:center;padding:10px 15px;border-bottom:1px solid rgba(28,42,63,.5);gap:10px}
-    .drow:last-child{border-bottom:none}
-    .dlbl{font-size:12px;color:var(--muted);flex-shrink:0}
-    .dval{font-size:13px;font-weight:500;color:var(--text);text-align:right}
-    .dval.hl{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--gold)}
-    .tx-row{display:flex;justify-content:space-between;align-items:center;padding:10px 15px;border-bottom:1px solid rgba(28,42,63,.5)}
-    .tx-row:last-child{border-bottom:none}
-    .tx-date{font-size:12px;color:var(--muted)}
-    .tx-price{font-size:13px;font-weight:600;color:var(--text);text-align:right}
-    .tx-type{font-size:10px;color:var(--muted);text-align:right;margin-top:2px}
-    .links-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .ext-link{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:12px 13px;text-decoration:none;display:flex;flex-direction:column;gap:4px;cursor:pointer}
-    .ext-link:active{border-color:var(--accent)}
-    .el-ico{font-size:18px} .el-lbl{font-size:11px;font-weight:700;color:var(--text);font-family:'Syne',sans-serif} .el-sub{font-size:10px;color:var(--muted)}
-    .notes-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-    .notes-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--s2)}
-    .notes-head h3{font-family:'Syne',sans-serif;font-size:12px;font-weight:700}
-    #noteText{width:100%;background:transparent;border:none;color:var(--text);font-family:'Epilogue',sans-serif;font-size:13px;padding:13px 15px;resize:none;outline:none;min-height:80px;line-height:1.6}
-    #noteText::placeholder{color:var(--muted)}
-    .notes-foot{display:flex;justify-content:flex-end;padding:7px 12px;border-top:1px solid var(--border)}
-    .save-note{font-size:12px;font-weight:600;color:var(--sky);background:none;border:none;cursor:pointer;padding:4px 8px;font-family:'Epilogue',sans-serif}
-    .hist-wrap{display:flex;flex-direction:column;gap:10px;padding-top:14px}
-    .hist-item{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;display:flex;align-items:center;gap:12px;cursor:pointer}
-    .hist-item:active{border-color:var(--accent)}
-    .hist-thumb{width:52px;height:52px;border-radius:10px;background:var(--s2);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px}
-    .hist-thumb img{width:100%;height:100%;object-fit:cover}
-    .hist-info{flex:1;min-width:0}
-    .hist-addr{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .hist-date{font-size:11px;color:var(--muted);margin-top:3px}
-    .hist-score{font-size:13px;font-weight:700;flex-shrink:0}
-    .hs-h{color:var(--green)} .hs-m{color:var(--gold)} .hs-l{color:var(--muted)}
-    .hist-empty{text-align:center;padding:52px 20px;color:var(--muted);font-size:13px;line-height:1.6}
-    .alerts-wrap{display:flex;flex-direction:column;gap:12px;padding-top:14px}
-    .alerts-config{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px 15px}
-    .alerts-config h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:10px}
-    .cfg-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px}
-    .cfg-row label{font-size:12px;color:var(--muted);flex-shrink:0}
-    .cfg-row input,.cfg-row select{background:var(--s1);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'Epilogue',sans-serif;font-size:12px;padding:7px 10px;outline:none;flex:1;max-width:200px;min-width:0}
-    .cfg-row input:focus,.cfg-row select:focus{border-color:var(--accent)}
-    .cfg-row input::placeholder{color:var(--muted)}
-    .scan-btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#818cf8);color:#fff;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px}
-    .scan-btn:active{opacity:.85} .scan-btn:disabled{opacity:.5;cursor:not-allowed}
-    .scan-status{font-size:12px;color:var(--muted);text-align:center;margin-top:8px;min-height:18px}
-    .alert-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-    .alert-top{display:flex;justify-content:space-between;align-items:flex-start;padding:13px 15px 8px;gap:8px}
-    .alert-title{font-size:13px;font-weight:600;line-height:1.3}
-    .alert-loc{font-size:11px;color:var(--muted);padding:0 15px 10px}
-    .alert-prices{display:flex;border-top:1px solid var(--border)}
-    .ap-item{flex:1;padding:10px 14px;border-right:1px solid var(--border)}
-    .ap-item:last-child{border-right:none}
-    .ap-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
-    .ap-val{font-size:14px;font-weight:700;font-family:'Syne',sans-serif;margin-top:3px}
-    .ap-green{color:var(--green)} .ap-red{color:var(--red)}
-    .alert-reasoning{font-size:11px;color:var(--muted);font-style:italic;padding:10px 15px;border-top:1px solid var(--border);line-height:1.5}
-    .alert-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 15px;border-top:1px solid var(--border)}
-    .src-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px}
-    .src-dp{background:rgba(125,211,252,.1);color:var(--sky)}
-    .src-kj{background:rgba(52,211,153,.1);color:var(--green)}
-    .open-link{font-size:11px;color:var(--accent);font-weight:600;text-decoration:none}
-    .no-alerts{text-align:center;padding:32px 20px;color:var(--muted);font-size:13px;line-height:1.6}
-    /* Capture tab */
-    .capture-wrap{display:flex;flex-direction:column;align-items:center;padding-top:28px;gap:18px}
-    .capture-title{text-align:center}
-    .capture-title h2{font-family:'Syne',sans-serif;font-size:21px;font-weight:700}
-    .capture-title p{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5;max-width:280px}
-    .big-capture{width:200px;height:200px;border-radius:50%;border:none;cursor:pointer;background:radial-gradient(circle at 30% 30%,#3b82f6,#1e40af);color:#fff;font-family:'Syne',sans-serif;font-weight:800;font-size:19px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 40px rgba(59,130,246,.4);transition:.15s;-webkit-tap-highlight-color:transparent}
-    .big-capture:active{transform:scale(.95);box-shadow:0 6px 24px rgba(59,130,246,.5)}
-    .big-capture .bc-ico{font-size:46px}
-    .big-capture.busy{background:radial-gradient(circle at 30% 30%,#475569,#1e293b);pointer-events:none}
-    .big-capture.busy .bc-ico{animation:spin 1s linear infinite}
-    .capture-actions{display:flex;gap:10px;width:100%;max-width:320px}
-    .cap-secondary{flex:1;padding:13px;border-radius:12px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:'Epilogue',sans-serif;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:.15s}
-    .cap-secondary:active{background:var(--s2)}
-    .cap-secondary.recording{border-color:var(--red);color:var(--red);animation:pulse 1.2s ease infinite}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-    .cap-status{font-size:12px;color:var(--sky);text-align:center;min-height:18px;font-weight:500}
-    .cap-manual{width:100%;max-width:320px;margin-top:4px}
-    .cap-manual-toggle{font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:'Epilogue',sans-serif}
-    .cap-manual-row{display:flex;gap:8px;margin-top:10px}
-    .cap-manual-row input{flex:1;background:var(--s1);border:1px solid var(--border);border-radius:9px;color:var(--text);font-family:'Epilogue',sans-serif;font-size:13px;padding:11px 12px;outline:none}
-    .cap-manual-row input:focus{border-color:var(--accent)}
-    .cap-manual-row button{padding:0 16px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-family:'Epilogue',sans-serif}
-    /* Prospect list */
-    .prosp-wrap{display:flex;flex-direction:column;gap:10px;padding-top:14px}
-    .prosp-filter{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
-    .pf-chip{flex-shrink:0;font-size:11px;font-weight:600;padding:6px 13px;border-radius:20px;border:1px solid var(--border);background:var(--s1);color:var(--muted);cursor:pointer;font-family:'Epilogue',sans-serif;white-space:nowrap}
-    .pf-chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-    .prosp-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-    .prosp-top{display:flex;gap:12px;padding:13px 15px}
-    .prosp-thumb{width:54px;height:54px;border-radius:10px;background:var(--s2);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px}
-    .prosp-thumb img{width:100%;height:100%;object-fit:cover}
-    .prosp-info{flex:1;min-width:0}
-    .prosp-addr{font-size:13px;font-weight:600;line-height:1.3}
-    .prosp-meta{font-size:11px;color:var(--muted);margin-top:3px}
-    .prosp-note{font-size:11px;color:var(--sky);font-style:italic;margin-top:4px}
-    .prosp-status-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;align-self:flex-start;flex-shrink:0}
-    .ps-todo{background:rgba(251,191,36,.15);color:var(--gold)}
-    .ps-progress{background:rgba(59,130,246,.15);color:var(--sky)}
-    .ps-done{background:rgba(52,211,153,.15);color:var(--green)}
-    .ps-skip{background:rgba(100,116,139,.15);color:var(--muted)}
-    .prosp-checklist{display:flex;gap:0;border-top:1px solid var(--border)}
-    .pc-item{flex:1;padding:9px 6px;text-align:center;font-size:10px;color:var(--muted);text-decoration:none;border-right:1px solid var(--border);transition:.15s;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:'Epilogue',sans-serif;background:none;border-top:none;border-bottom:none;border-left:none}
-    .pc-item:last-child{border-right:none}
-    .pc-item:active{background:var(--s2)}
-    .pc-item .pc-ico{font-size:16px}
-    .pc-item.checked{color:var(--green)}
-    .prosp-statusrow{display:flex;gap:0;border-top:1px solid var(--border)}
-    .psr-btn{flex:1;padding:8px;font-size:10px;font-weight:600;background:none;border:none;border-right:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:'Epilogue',sans-serif}
-    .psr-btn:last-child{border-right:none}
-    .psr-btn.active{color:var(--sky)}
-    .prosp-empty{text-align:center;padding:48px 24px;color:var(--muted);font-size:13px;line-height:1.6}
-    .prosp-title-row{display:flex;align-items:center;gap:6px}
-    .prosp-addr-line{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:2px}
-    .mini-edit{background:none;border:none;cursor:pointer;font-size:11px;opacity:.5;padding:2px;flex-shrink:0}
-    .mini-edit:active{opacity:1}
-    .prosp-notes{display:flex;flex-direction:column;gap:5px;padding:0 15px 11px}
-    .pnote{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--sky);background:rgba(125,211,252,.06);border-radius:7px;padding:7px 9px}
-    .pnote-ico{flex-shrink:0}
-    .pnote-txt{flex:1;font-style:italic}
-    .pnote-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px}
-    .pnote-del:active{color:var(--red)}
-    .prosp-toolrow{display:flex;gap:0;border-top:1px solid var(--border)}
-    .pt-btn{flex:1;padding:9px;font-size:11px;font-weight:600;background:none;border:none;border-right:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:'Epilogue',sans-serif;text-decoration:none;text-align:center}
-    .pt-btn:last-child{border-right:none}
-    .pt-btn:active{background:var(--s2)}
-    .pt-btn.danger{color:var(--red)}
-    .adjust-sheet{background:var(--s1);border-radius:20px 20px 0 0;border:1px solid var(--border);width:100%;max-width:480px;padding:20px 18px 36px;display:flex;flex-direction:column;gap:11px;animation:slideUp .3s ease;max-height:94dvh;overflow-y:auto}
-    .adjust-sheet h2{font-family:'Syne',sans-serif;font-size:18px;font-weight:800}
-    .adjust-hint{font-size:12px;color:var(--muted);line-height:1.5}
-    .adjust-notes-box{font-size:12px;color:var(--sky);background:var(--s2);border-radius:8px;padding:9px 11px;line-height:1.5}
-    .adjust-map{width:100%;height:320px;border-radius:12px;overflow:hidden;background:var(--s2)}
-    .adjust-addr{font-size:13px;font-weight:500;text-align:center;padding:4px}
-    .adjust-actions{display:flex;gap:10px;align-items:center}
-    .adjust-actions .pt-btn{border:1px solid var(--border);border-radius:11px;padding:14px;flex:0 0 auto;min-width:90px}
-    nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(8,12,20,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;z-index:50;padding-bottom:env(safe-area-inset-bottom)}
-    .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;cursor:pointer;color:var(--muted);font-size:10px;font-weight:500;letter-spacing:.3px;border:none;background:none;font-family:'Epilogue',sans-serif;transition:.15s}
-    .nav-btn.active{color:var(--sky)}
-    .nav-ico{font-size:21px}
-    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:200;display:none;align-items:flex-end;justify-content:center}
-    .overlay.show{display:flex}
-    .sheet{background:var(--s1);border-radius:20px 20px 0 0;border:1px solid var(--border);width:100%;max-width:480px;padding:22px 20px 44px;display:flex;flex-direction:column;gap:13px;animation:slideUp .3s ease;max-height:90dvh;overflow-y:auto}
-    .handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 6px}
-    .sheet h2{font-family:'Syne',sans-serif;font-size:19px;font-weight:800}
-    .field{display:flex;flex-direction:column;gap:5px}
-    .field label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
-    .field input{background:var(--s2);border:1.5px solid var(--border);border-radius:9px;color:var(--text);font-family:'Epilogue',sans-serif;font-size:14px;padding:12px 13px;outline:none;transition:.2s}
-    .field input:focus{border-color:var(--accent)}
-    .field input::placeholder{color:var(--muted)}
-    .hint{font-size:11px;color:var(--muted);line-height:1.55;background:var(--s2);border-radius:8px;padding:10px 12px}
-    .hint a{color:var(--sky);text-decoration:none}
-    .btn-save{width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),#818cf8);color:#fff;border:none;border-radius:11px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:2px}
-    .btn-save:active{opacity:.85}
-    .sep{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;padding-top:4px;border-top:1px solid var(--border)}
-    .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#080c14;font-size:12px;font-weight:700;padding:8px 18px;border-radius:20px;transition:.3s;opacity:0;pointer-events:none;font-family:'Syne',sans-serif;white-space:nowrap;z-index:300}
-    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-    .hidden{display:none!important}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
-    ::-webkit-scrollbar{width:3px}
-    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-    .drive-status{font-size:12px;color:var(--muted);padding:6px 0;min-height:18px}
-    .drive-status.connected{color:var(--green)}
-    .drive-status.syncing{color:var(--sky)}
-    .drive-status.error{color:var(--red)}
-    .btn-drive-connect{width:100%;padding:12px;background:var(--s2);color:var(--text);border:1.5px solid var(--border);border-radius:11px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:.15s}
-    .btn-drive-connect:active{background:var(--border)}
-    .btn-drive-sync{width:100%;padding:12px;background:linear-gradient(135deg,#1a6b3c,#15803d);color:#fff;border:none;border-radius:11px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
-    .btn-drive-sync:active{opacity:.85}
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Radar immobilier — Portail</title>
+<!--
+  Portail du Radar immobilier — page /radar/ (module M7, format 1 de donnees.json).
+  Coquille publique (décision 1-C, 29 sept. 2026) : AUCUNE donnée dans ce fichier.
+  Après connexion Google, la page lit donnees.json et journal_runs.json dans le Drive
+  (« Radar immobilier / 03 - Donnees machine ») — lecture seule, jamais d'écriture.
+  Partage d'une fiche : image dessinée dans la page + copie du Cruncher lue dans le Drive (lecture seule).
+  Aucun calcul : la page affiche ce que le Cruncher et assembler.py ont produit.
+  Contrat de données : CHANTIER_Portail_Premiere_Carte.md §5.
+-->
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2330;--mute:#6b7280;--line:#e5e7eb;--pos:#0f7b4b;--posbg:#e6f4ec;--neg:#b42318;--negbg:#fdecea;--acc:#2446a8;--warn:#8a5a00;--warnbg:#fff4de}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:#fff;border-bottom:1px solid var(--line);padding:12px 16px;position:sticky;top:0;z-index:2}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;max-width:1200px;margin:auto}
+h1{font-size:19px;margin:0}.sub{color:var(--mute);font-size:13px}
+.etat{font-size:13px;padding:4px 10px;border-radius:99px;background:var(--bg);color:var(--mute);border:0;font-family:inherit;cursor:pointer}
+.etat.ok{background:var(--posbg);color:var(--pos)}.etat.ko{background:var(--negbg);color:var(--neg)}
+.barre{display:flex;gap:8px;flex-wrap:wrap;max-width:1200px;margin:10px auto 0}
+.barre select{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);flex:1 1 0;min-width:0;max-width:340px;text-overflow:ellipsis}
+.etat .ct{display:none}
+.partage{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--acc);border-radius:8px;background:var(--acc);color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;white-space:nowrap}
+.partage svg{width:15px;height:15px;flex:0 0 auto}
+.kpis{display:flex;gap:10px;flex-wrap:wrap;max-width:1200px;margin:16px auto 0;padding:0 16px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:120px;flex:1 1 120px}
+.kpi b{display:block;font-size:22px}.kpi span{font-size:12px;color:var(--mute)}.kpi.off{opacity:.5}
+main{max-width:1200px;margin:16px auto;padding:0 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:14px}
+.carte{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.tag{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.adr{font-weight:650;font-size:16px;margin:0}.meta{color:var(--mute);font-size:13px}
+.prix{display:grid;grid-template-columns:1.25fr 1fr .8fr;gap:6px}
+.prix>div{background:var(--bg);border-radius:8px;padding:6px 8px;min-width:0}
+.prix .l{font-size:11px;color:var(--mute)}.prix .v{font-size:17px;font-weight:700;white-space:nowrap}
+.prix .v.s{font-size:15px}.prix .r{font-size:11px;color:var(--mute)}
+table.abc{width:100%;border-collapse:separate;border-spacing:4px 0;table-layout:fixed}
+.abc th{font-size:11px;color:var(--mute);font-weight:500;text-align:center;padding-bottom:2px}
+.abc td{text-align:center;white-space:nowrap}
+.abc .val td{font-weight:650;font-size:14.5px;padding:4px 0}
+.abc .ec td{padding:6px 2px;border-radius:8px}
+.abc .ec .l{display:block;font-size:10.5px;color:var(--mute);white-space:normal;line-height:1.2}
+.abc .ec b{font-size:15px}
+.pos{background:var(--posbg)}.pos b{color:var(--pos)}.neg{background:var(--negbg)}.neg b{color:var(--neg)}
+ul.mf{margin:0;padding-left:18px;font-size:13px}ul.mf li{margin:2px 0}
+.chk{display:inline-block;width:15px;height:15px;border:1.5px solid var(--mute);border-radius:4px;vertical-align:-2px;margin-left:4px;opacity:.6}
+.bas{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{text-decoration:none;font-size:13px;padding:7px 12px;border-radius:8px;border:1px solid var(--acc);color:var(--acc);background:#fff;font-family:inherit;cursor:pointer}
+.btn.p{background:var(--acc);color:#fff}.btn[aria-disabled=true]{opacity:.4;pointer-events:none}
+.score{margin-left:auto;font-size:12px;color:var(--mute)}
+details{font-size:13px}summary{cursor:pointer;color:var(--acc)}
+table.det{width:100%;border-collapse:collapse;margin-top:6px}
+.det td,.det th{padding:3px 4px;border-bottom:1px solid var(--line);text-align:right;font-weight:400}
+.det td:first-child,.det th:first-child{text-align:left}.det th{color:var(--mute);font-size:12px}
+.det-plan{width:100%;height:180px;border:0;border-radius:8px;margin-top:8px}
+.flag{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:6px 8px;margin:6px 0 0}
+.accueil{max-width:520px;margin:48px auto;padding:24px 16px;text-align:center;grid-column:1/-1}
+.accueil p{color:var(--mute)}
+.panneau{max-width:1200px;margin:12px auto 0;padding:0 16px}
+.panneau .boite{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13px}
+.panneau .run{border-bottom:1px solid var(--line);padding:8px 0}.panneau .run:last-child{border:0}
+.panneau pre{white-space:pre-wrap;margin:4px 0 0;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--mute)}
+.note{max-width:1200px;margin:0 auto 24px;padding:0 16px;color:var(--mute);font-size:12px}
+dialog.pp{border:0;border-radius:14px;padding:16px;width:min(440px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;color:var(--ink);font:inherit;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+dialog.pp::backdrop{background:rgba(20,25,35,.45)}
+.pp h2{font-size:16px;margin:0 0 10px}
+.pp .ap{max-height:44vh;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff}
+.pp .ap img{width:100%;display:block}
+.pp label{display:flex;gap:8px;align-items:center;font-size:14px;margin:12px 0 0;cursor:pointer}
+.pp input[type=checkbox]{width:18px;height:18px;flex:0 0 auto;accent-color:var(--acc)}
+.pp .st{font-size:12.5px;color:var(--mute);min-height:36px;margin:10px 0}
+.pp .act{display:flex;gap:8px;justify-content:flex-end}
+.pp .btn{padding:9px 16px;font-size:14px}.btn:disabled{opacity:.4;cursor:default}
+[hidden]{display:none!important}
+@media (max-width:420px){.prix{grid-template-columns:1fr 1fr}.prix>div:first-child{grid-column:1/-1}}
+/* Téléphone : en-tête réduit à deux lignes (titre + dernier run, puis tri + secteur côte à côte). */
+@media (max-width:600px){
+ header{padding:6px 12px}.top{flex-wrap:nowrap;gap:8px}
+ h1{font-size:16px;white-space:nowrap}h1 .lg,.sub,.etat .lg{display:none}.etat .ct{display:inline}
+ .etat{font-size:12px;padding:3px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+ .barre{margin-top:6px;gap:6px;flex-wrap:nowrap}.barre select{max-width:none;padding:5px 8px}.partage{padding:5px 10px}.partage span{display:none}
+ .kpis{margin-top:8px;gap:6px;flex-wrap:nowrap}.kpi.off{display:none}
+ .kpi{display:flex;align-items:baseline;gap:6px;padding:4px 10px;min-width:0;flex:1 1 0;white-space:nowrap;overflow:hidden}
+ .kpi b{display:inline;font-size:15px}main{margin-top:8px}
+}
+</style>
 </head>
 <body>
-<div class="shell">
-  <header>
-    <div class="hrow">
-      <div class="wordmark">ImmoScan</div>
-      <div class="icon-btn" id="settingsBtn">⚙️</div>
-    </div>
-    <div class="sbar hidden" id="sbar">
-      <span class="sbar-icon">🔍</span>
-      <input type="text" id="addrInput" placeholder="Entrer une adresse…" autocomplete="off"/>
-      <span class="xclear" id="xclear">✕</span>
-      <div class="ac" id="ac"></div>
-    </div>
-  </header>
+<header>
+ <div class="top">
+  <div><h1>Radar immobilier<span class="lg"> — Portail</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <button class="etat" id="etat" type="button" hidden></button>
+ </div>
+ <div class="barre" id="barre" hidden>
+  <select id="tri" aria-label="Trier">
+   <option value="ecartC">Trier : écart C ↓ (potentiel)</option>
+   <option value="ecartA">Écart A ↓ (plus petit écart à négocier)</option>
+   <option value="ppp">Prix par porte ↑</option>
+   <option value="recent">Plus récents</option>
+  </select>
+  <select id="secteur" aria-label="Secteur"><option value="">Tous les secteurs</option></select>
+  <button class="partage" id="btn-partager" type="button" aria-label="Partager l'aperçu du Radar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg><span id="txt-partager">Partager</span></button>
+ </div>
+</header>
 
-  <div class="main" id="main">
-    <div id="captureContent">
-      <div class="capture-wrap">
-        <div class="capture-title">
-          <h2>Spotté une propriété ?</h2>
-          <p>Appuie une fois. Ta position est captée, l'adresse se reconstitue toute seule.</p>
-        </div>
-        <button class="big-capture" id="bigCapture">
-          <span class="bc-ico">📍</span>
-          <span id="bigCaptureLabel">Capturer ici</span>
-        </button>
-        <div class="cap-status" id="capStatus"></div>
-        <div class="capture-actions">
-          <button class="cap-secondary" id="voiceBtn">🎤 Ajouter note vocale</button>
-          <button class="cap-secondary" id="photoBtn">📷 Photo</button>
-          <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none"/>
-        </div>
-        <div class="cap-manual">
-          <button class="cap-manual-toggle" id="manualToggle">Pas sur place ? Entrer une adresse manuellement</button>
-          <div class="cap-manual-row hidden" id="manualRow">
-            <input type="text" id="manualAddr" placeholder="123 rue Exemple, Montréal" autocomplete="off"/>
-            <button id="manualAdd">+</button>
-          </div>
-        </div>
-      </div>
-    </div>
+<section class="panneau" id="panneau-journal" hidden><div class="boite" id="journal"></div></section>
+<section class="kpis" id="kpis" hidden></section>
 
-    <div id="prospContent" class="hidden">
-      <div class="prosp-wrap">
-        <div class="prosp-filter" id="prospFilter">
-          <button class="pf-chip active" data-filter="all">Toutes</button>
-          <button class="pf-chip" data-filter="todo">À vérifier</button>
-          <button class="pf-chip" data-filter="progress">En cours</button>
-          <button class="pf-chip" data-filter="done">Complétées</button>
-          <button class="pf-chip" data-filter="skip">Écartées</button>
-          <button class="pf-chip" data-filter="archived">📥 Archivées</button>
-        </div>
-        <div id="prospList"></div>
-      </div>
-    </div>
+<main id="grille">
+ <div class="accueil" id="accueil">
+  <p id="message">Les données du Radar sont dans ton Google Drive. Connecte-toi pour les afficher.</p>
+  <button class="btn p" id="btn-connexion" type="button">Se connecter avec Google</button>
+ </div>
+</main>
+<p class="note" id="pied" hidden></p>
 
-    <div id="scanContent" class="hidden">
-      <div class="empty" id="emptyState">
-        <div class="empty-ico">🏚️</div>
-        <h2>Recherche par adresse</h2>
-        <p>Entre une adresse pour obtenir le rôle foncier, zonage, historique et une analyse Claude.</p>
-        <div id="configWarn" class="config-warn hidden">⚙️ Configure ta clé Anthropic dans les réglages</div>
-      </div>
-      <div class="loading" id="loadingState">
-        <div class="spinner"></div>
-        <div class="steps">
-          <div class="step" id="s1"><span class="step-dot"></span>Photo Street View</div>
-          <div class="step" id="s2"><span class="step-dot"></span>Rôle foncier municipal</div>
-          <div class="step" id="s3"><span class="step-dot"></span>Zonage &amp; règlements</div>
-          <div class="step" id="s4"><span class="step-dot"></span>Historique des ventes</div>
-          <div class="step" id="s5"><span class="step-dot"></span>Analyse Claude</div>
-        </div>
-      </div>
-      <div class="report" id="report"></div>
-    </div>
-    <div id="histContent" class="hidden"><div class="hist-wrap" id="histList"></div></div>
-    <div id="alertsContent" class="hidden"><div class="alerts-wrap" id="alertsWrap"></div></div>
-  </div>
-
-  <nav>
-    <button class="nav-btn active" id="navCapture" data-tab="capture"><span class="nav-ico">📍</span>Capture</button>
-    <button class="nav-btn" id="navProsp" data-tab="prosp"><span class="nav-ico">📋</span>Liste</button>
-    <button class="nav-btn" id="navScan" data-tab="scan"><span class="nav-ico">🔍</span>Recherche</button>
-    <button class="nav-btn" id="navAlerts" data-tab="alerts"><span class="nav-ico">🔔</span>Alertes</button>
-    <button class="nav-btn" id="navHist" data-tab="history"><span class="nav-ico">🕐</span>Analyses</button>
-  </nav>
-</div>
-
-<div class="overlay" id="overlay">
-  <div class="sheet">
-    <div class="handle"></div>
-    <h2>Réglages</h2>
-    <div class="sep">Clés API</div>
-    <div class="field"><label>Clé Anthropic (Claude)</label><input type="password" id="cfgAnthropic" placeholder="sk-ant-…"/></div>
-    <div class="field"><label>Clé Google Maps</label><input type="password" id="cfgGoogle" placeholder="AIza…"/></div>
-    <div class="hint">Anthropic : <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br>Google : <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a></div>
-<div class="sep">Synchro Google Drive</div>
-    <div id="driveStatus" class="drive-status"><!-- contenu dynamique --></div>
-    <button class="btn-drive-connect" id="btnDriveConnect">🔗 Connecter Google Drive</button>
-    <button class="btn-drive-sync" id="btnDriveSync" style="display:none">☁️ Synchroniser maintenant</button>
-    <div class="hint">Tes prospects et ta clé Anthropic seront synchronisés entre tous tes appareils via ton Google Drive.</div>
-        <div class="sep">Alertes DuProprio / Kijiji</div>
-    <div class="field"><label>URL recherche DuProprio</label><input type="url" id="cfgDP" placeholder="https://duproprio.com/fr/recherche…"/></div>
-    <div class="field"><label>URL recherche Kijiji (optionnel)</label><input type="url" id="cfgKJ" placeholder="https://www.kijiji.ca/b-maison-a-vendre/…"/></div>
-    <div class="field"><label>Ton courriel</label><input type="email" id="cfgEmail" placeholder="toi@exemple.com"/></div>
-    <div class="hint">Les URLs de recherche se configurent directement sur DuProprio/Kijiji avec tes filtres, puis tu copies l'URL ici.</div>
-    <button class="btn-save" id="btnSave">Enregistrer</button>
-  </div>
-</div>
-
-<div class="overlay" id="adjustOverlay">
-  <div class="adjust-sheet">
-    <div class="handle"></div>
-    <h2>Ajuster la position</h2>
-    <p class="adjust-hint">Déplace le point sur la vraie propriété, ou cherche l'adresse exacte ci-dessous.</p>
-    <div class="adjust-notes-box" id="adjustNotes"></div>
-    <div style="position:relative;margin-bottom:4px">
-      <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none">🔍</span>
-      <input type="text" id="adjustSearch" placeholder="Chercher l'adresse exacte…" autocomplete="off" style="width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Epilogue',sans-serif;font-size:13px;padding:11px 13px 11px 38px;outline:none;box-sizing:border-box"/>
-      <div class="ac" id="adjustAC"></div>
-    </div>
-    <div id="adjustMapDiv" class="adjust-map"></div>
-    <div class="adjust-addr">📍 <span id="adjustAddrPreview">…</span></div>
-    <div class="adjust-actions">
-      <button class="pt-btn" id="adjustCancel">Annuler</button>
-      <button class="btn-save" id="adjustSave" style="flex:1;margin:0">Enregistrer la position</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
+<dialog class="pp" id="pp" aria-labelledby="pp-titre">
+ <h2 id="pp-titre">Partager</h2>
+ <div class="ap"><img id="pp-apercu" alt="Aperçu de la fiche qui sera envoyée"></div>
+ <label id="pp-l-notes" hidden><input type="checkbox" id="pp-notes" checked> Joindre mes notes</label>
+ <label id="pp-l-cr"><input type="checkbox" id="pp-cr" checked> Joindre une copie du Cruncher (fichier Excel)</label>
+ <div class="st" id="pp-etat" aria-live="polite"></div>
+ <div class="act"><button class="btn" id="pp-annuler" type="button">Annuler</button><button class="btn p" id="pp-envoyer" type="button" disabled>Envoyer</button></div>
+</dialog>
 
 <script>
-const GOOGLE_KEY='AIzaSyAbCllaHhww1nLNVkYT1myTe3FDIa-96o8';
-// ── MODULE ZONAGE ────────────────────────────────────────────────────────────
-// Après avoir déployé zonage-worker.js sur Cloudflare Workers,
-// remplace l'URL ci-dessous par ton URL Workers (ex: https://zonage.monnom.workers.dev)
-const ZONAGE_WORKER_URL='https://immoscan-zonage.ftremblay777.workers.dev';
-const EVALWEB_WORKER_URL='https://immoscan-evalweb.ftremblay777.workers.dev';
-const SPECTRUM_CFG={RPP:'/- Rosemont–La Petite-Patrie',MHM:'/- Mercier–Hochelaga-Maisonneuve',PMR:'/- Le Plateau–Mont-Royal',CDN:'/- Côte-des-Neiges–Notre-Dame-de-Grâce'};
-function spectrumUrl(arr,lat,lng){const cfg=SPECTRUM_CFG[arr];if(!cfg||!lat||!lng)return null;return 'https://spectrum.montreal.ca/connect/analyst/mobile/#/main?mapcfg='+encodeURIComponent(cfg)+'&lat='+lat+'&lon='+lng+'&zoom=17';}
-const cfg=()=>{try{return JSON.parse(localStorage.getItem('imsc_cfg')||'{}')}catch{return{}}};
-const saveCfg=o=>localStorage.setItem('imsc_cfg',JSON.stringify(o));
-const hist=()=>{try{return JSON.parse(localStorage.getItem('imsc_hist')||'[]')}catch{return[]}};
-const saveHist=a=>localStorage.setItem('imsc_hist',JSON.stringify(a.slice(0,100)));
-const alerts=()=>{try{return JSON.parse(localStorage.getItem('imsc_alerts')||'[]')}catch{return[]}};
-const saveAlerts=a=>localStorage.setItem('imsc_alerts',JSON.stringify(a.slice(0,50)));
-const prosp=()=>{try{const a=JSON.parse(localStorage.getItem('imsc_prosp')||'[]');return a.map(migrateProsp)}catch{return[]}};
-const saveProsp=a=>localStorage.setItem('imsc_prosp',JSON.stringify(a.slice(0,300)));
-function addProsp(entry){const p=prosp();p.unshift(entry);saveProsp(p)}
-// Backward-compat: old entries had a single `note` string; convert to `notes` array + ensure new fields
-function migrateProsp(e){
-  if(e.notes===undefined){e.notes=e.note?[e.note]:[]}
-  if(e.archived===undefined)e.archived=false;
-  if(e.title===undefined)e.title=e.address||'Propriété';
-  if(e.checks===undefined)e.checks={evalweb:false,registre:false,zonage:false};
-  if(e.zonageResult===undefined)e.zonageResult=null;
-  return e;
-}
-function newProspEntry(o){return Object.assign({id:uid(),lat:null,lng:null,address:'',title:'',addressResolved:false,date:new Date().toISOString(),status:'todo',notes:[],photo:null,archived:false,checks:{evalweb:false,registre:false,zonage:false},evalwebResult:null},o)}
-function updateProsp(id,changes){const p=prosp();const i=p.findIndex(x=>x.id===id);if(i>=0){p[i]={...p[i],...changes};saveProsp(p)}}
-function upsertHist(e){const h=hist(),i=h.findIndex(x=>x.address===e.address);if(i>=0)h.splice(i,1);h.unshift(e);saveHist(h)}
-const $=id=>document.getElementById(id);
-const esc=s=>(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const fmt$=v=>v?Number(v).toLocaleString('fr-CA')+' $':'N/D';
-function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
+"use strict";
+// ---------------------------------------------------------------- réglages
+// Identifiant client OAuth (étiquette publique, pas une clé — décision 1-C du 29 sept. 2026).
+const CLIENT_ID = "970382559280-ohc88l54o2iigejropfleutrv2qkfjbf.apps.googleusercontent.com";
+// Dossier « Radar immobilier / 03 - Donnees machine » (Drive de François).
+const DOSSIER_DONNEES = "1pW-gd80-oXDWSr4lIMp8Oswp1bcjza1L";
+const NOM_DONNEES = "donnees.json";
+const NOM_JOURNAL = "journal_runs.json";
+const PORTEE = "https://www.googleapis.com/auth/drive.readonly";
+const FORMATS_CONNUS = ["1"];
+// Lien envoyé par le bouton « Partager » : l'aperçu invité (lecture seule, sans connexion Google).
+// Le lien du portail lui-même ne montrerait rien à un invité : les données sont dans le Drive de François.
+const LIEN_PARTAGE = "https://claude.ai/artifact/UuhXLBazej9v1EqTG7snNk";
 
-// TABS
-let currentTab='capture',currentReport=null,prospFilter='all';
-document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
-function switchTab(tab){
-  currentTab=tab;
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
-  $('captureContent').classList.toggle('hidden',tab!=='capture');
-  $('prospContent').classList.toggle('hidden',tab!=='prosp');
-  $('scanContent').classList.toggle('hidden',tab!=='scan');
-  $('histContent').classList.toggle('hidden',tab!=='history');
-  $('alertsContent').classList.toggle('hidden',tab!=='alerts');
-  $('sbar').classList.toggle('hidden',tab!=='scan');
-  if(tab==='history')renderHistory();
-  if(tab==='alerts')renderAlerts();
-  if(tab==='prosp')renderProsp();
-}
+// ---------------------------------------------------------------- état
+let jeton = null, donnees = null, journal = null, clientJeton = null;
+const $ = (id) => document.getElementById(id);
 
-// SETTINGS
-$('settingsBtn').addEventListener('click',()=>{
-  const c=cfg();
-  $('cfgAnthropic').value=c.anthropic||'';
-  $('cfgGoogle').value=c.google||GOOGLE_KEY;
-  $('cfgDP').value=c.dpUrl||'';
-  $('cfgKJ').value=c.kjUrl||'';
-  $('cfgEmail').value=c.email||'';
-  $('overlay').classList.add('show');
-});
-$('overlay').addEventListener('click',e=>{if(e.target===$('overlay'))$('overlay').classList.remove('show')});
-$('btnSave').addEventListener('click',()=>{
-  saveCfg({anthropic:$('cfgAnthropic').value.trim(),google:$('cfgGoogle').value.trim()||GOOGLE_KEY,dpUrl:$('cfgDP').value.trim(),kjUrl:$('cfgKJ').value.trim(),email:$('cfgEmail').value.trim()});
-  $('overlay').classList.remove('show');showToast('✓ Réglages enregistrés');checkConfig();
-});
-function checkConfig(){const c=cfg();const w=$('configWarn');if(!c.anthropic){w.classList.remove('hidden');w.onclick=()=>$('overlay').classList.add('show')}else w.classList.add('hidden')}
+// ---------------------------------------------------------------- formatage (aucun calcul)
+const nbFr = new Intl.NumberFormat("fr-CA", {maximumFractionDigits: 0});
+const nb1 = new Intl.NumberFormat("fr-CA", {minimumFractionDigits: 1, maximumFractionDigits: 1});
+const estNb = (v) => typeof v === "number" && isFinite(v);
+const $$ = (v) => estNb(v) ? nbFr.format(v) + " $" : "—";
+const $mille = (v) => estNb(v) ? nbFr.format(Math.round(v / 1000) * 1000) + " $" : "—";
+const signe$ = (v) => estNb(v) ? (v >= 0 ? "+" : "−") + nbFr.format(Math.abs(Math.round(v / 1000) * 1000)) + " $" : "—";
+const pct = (v) => estNb(v) ? nb1.format(v * 100) + " %" : "—";
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const dateCourte = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso.length === 10 ? iso + "T12:00:00" : iso);
+  return isNaN(d) ? esc(iso) : d.toLocaleDateString("fr-CA", {day: "numeric", month: "short"});
+};
+const dateHeure = (iso) => {
+  const d = new Date(iso);
+  return isNaN(d) ? "—" : d.toLocaleDateString("fr-CA", {day: "numeric", month: "short"}) + ", "
+    + d.toLocaleTimeString("fr-CA", {hour: "2-digit", minute: "2-digit"});
+};
+const aujourdhui = () => new Date().toLocaleDateString("en-CA");  // AAAA-MM-JJ, heure locale
 
-// AUTOCOMPLETE
-let acSvc=null,acToken=null,debTimer=null;
-function initMaps(){
-  const key=cfg().google||GOOGLE_KEY;
-  if(!key||window.google)return;
-  const s=document.createElement('script');
-  s.src=`https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&callback=_mapsReady`;
-  s.async=true;document.head.appendChild(s);
+// ---------------------------------------------------------------- connexion Google
+function message(txt) { $("message").textContent = txt; $("accueil").hidden = false; }
+
+function lireJetonMemorise() {
+  try {
+    const j = JSON.parse(sessionStorage.getItem("radar_jeton") || "null");
+    if (j && j.expire > Date.now() + 60000) return j.valeur;
+  } catch (e) {}
+  return null;
 }
-window._mapsReady=()=>{acSvc=new google.maps.places.AutocompleteService();acToken=new google.maps.places.AutocompleteSessionToken()};
-$('addrInput').addEventListener('input',e=>{
-  const v=e.target.value.trim();
-  $('xclear').style.display=v?'block':'none';
-  clearTimeout(debTimer);
-  if(v.length<3){closeAC();return}
-  debTimer=setTimeout(()=>fetchAC(v),280);
-});
-$('addrInput').addEventListener('keydown',e=>{if(e.key==='Enter'){closeAC();const v=$('addrInput').value.trim();if(v)analyze(v)}});
-$('xclear').addEventListener('click',()=>{$('addrInput').value='';$('xclear').style.display='none';closeAC();showEmpty()});
-function fetchAC(q){
-  if(!acSvc)return;
-  acSvc.getPlacePredictions({input:q+' Québec',componentRestrictions:{country:'ca'},types:['address'],sessionToken:acToken},(preds,status)=>{
-    if(status!==google.maps.places.PlacesServiceStatus.OK||!preds){closeAC();return}
-    openAC(preds.slice(0,5));
+function memoriserJeton(valeur, secondes) {
+  try { sessionStorage.setItem("radar_jeton", JSON.stringify({valeur, expire: Date.now() + secondes * 1000})); } catch (e) {}
+}
+function oublierJeton() { jeton = null; try { sessionStorage.removeItem("radar_jeton"); } catch (e) {} }
+
+function chargerGIS() {
+  return new Promise((ok, ko) => {
+    if (window.google && google.accounts && google.accounts.oauth2) return ok();
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client"; s.async = true;
+    s.onload = ok; s.onerror = () => ko(new Error("Service de connexion Google injoignable."));
+    document.head.appendChild(s);
   });
 }
-function openAC(preds){
-  const box=$('ac');
-  box.innerHTML=preds.map(p=>`<div class="ac-item" data-addr="${esc(p.description)}"><span class="ac-pin">📍</span><div><div class="ac-main">${esc(p.structured_formatting.main_text)}</div><div class="ac-sub">${esc(p.structured_formatting.secondary_text||'')}</div></div></div>`).join('');
-  box.querySelectorAll('.ac-item').forEach(item=>item.addEventListener('click',()=>{$('addrInput').value=item.dataset.addr;closeAC();analyze(item.dataset.addr)}));
-  box.classList.add('show');
-}
-function closeAC(){$('ac').classList.remove('show');$('ac').innerHTML=''}
 
-// SCAN
-function showEmpty(){currentReport=null;$('emptyState').classList.remove('hidden');$('loadingState').classList.remove('show');$('report').classList.remove('show')}
-function setStep(n,s){const el=$('s'+n);el.classList.remove('active','done');if(s)el.classList.add(s)}
-async function analyze(address){
-  const c=cfg();
-  if(!c.anthropic){showToast('⚙️ Configure ta clé Anthropic');$('overlay').classList.add('show');return}
-  currentReport=null;
-  $('emptyState').classList.add('hidden');$('report').classList.remove('show');$('loadingState').classList.add('show');
-  [1,2,3,4,5].forEach(n=>setStep(n,''));
-  try{
-    setStep(1,'active');
-    const gk=c.google||GOOGLE_KEY;
-    const svUrl=`https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${encodeURIComponent(address)}&fov=90&pitch=0&key=${gk}`;
-    await sleep(300);setStep(1,'done');
-    setStep(2,'active');await sleep(350);setStep(2,'done');
-    setStep(3,'active');await sleep(300);setStep(3,'done');
-    setStep(4,'active');await sleep(300);setStep(4,'done');
-    setStep(5,'active');
-    const data=await callClaude(address,c.anthropic);
-    setStep(5,'done');await sleep(200);
-    const existing=hist().find(h=>h.address===address);
-    currentReport={address,svUrl,...data,date:new Date().toISOString(),note:existing?.note||''};
-    upsertHist(currentReport);
-    $('loadingState').classList.remove('show');
-    renderReport(currentReport);
-  }catch(err){
-    $('loadingState').classList.remove('show');$('emptyState').classList.remove('hidden');
-    showToast('⚠️ '+(err.message||'Erreur'));
+async function connecter() {
+  if (!CLIENT_ID) { message("Portail pas encore relié à Google : l'identifiant client OAuth reste à installer (voir la fiche du chantier)."); return; }
+  try { await chargerGIS(); } catch (e) { message(e.message); return; }
+  if (!clientJeton) {
+    clientJeton = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID, scope: PORTEE,
+      callback: (r) => {
+        if (r.error) { message("Connexion refusée ou annulée (" + r.error + ")."); return; }
+        jeton = r.access_token; memoriserJeton(jeton, Number(r.expires_in) || 3600); charger();
+      },
+    });
+  }
+  clientJeton.requestAccessToken();
+}
+
+// ---------------------------------------------------------------- lecture Drive (lecture seule)
+async function drive(url) {
+  const r = await fetch(url, {headers: {Authorization: "Bearer " + jeton}});
+  if (r.status === 401) { oublierJeton(); throw Object.assign(new Error("Session expirée : reconnecte-toi."), {reconnecter: true}); }
+  if (r.status === 403 || r.status === 404) throw new Error("Ce compte Google n'a pas accès aux données du Radar.");
+  if (!r.ok) throw new Error("Drive a répondu " + r.status + ".");
+  return r;
+}
+async function lireFichier(nom) {
+  const q = encodeURIComponent(`'${DOSSIER_DONNEES}' in parents and name = '${nom}' and trashed = false`);
+  const liste = await (await drive(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)&orderBy=modifiedTime desc&pageSize=1&supportsAllDrives=true&includeItemsFromAllDrives=true`)).json();
+  if (!liste.files || !liste.files.length) return null;
+  return (await drive(`https://www.googleapis.com/drive/v3/files/${liste.files[0].id}?alt=media&supportsAllDrives=true`)).json();
+}
+
+async function charger() {
+  message("Lecture des données du Radar…"); $("btn-connexion").hidden = true;
+  try {
+    [donnees, journal] = await Promise.all([lireFichier(NOM_DONNEES), lireFichier(NOM_JOURNAL).catch(() => null)]);
+    if (!donnees) throw new Error("donnees.json introuvable dans « 03 - Donnees machine ».");
+    afficher();
+  } catch (e) {
+    $("btn-connexion").hidden = false; $("btn-connexion").textContent = e.reconnecter ? "Se reconnecter" : "Réessayer";
+    message(e.message);
   }
 }
 
-// CLAUDE API - PROPERTY ANALYSIS
-async function callClaude(address,apiKey){
-  const prompt=`Tu es un expert immobilier et analyste foncier spécialisé dans la région de Montréal, Québec.
+// ---------------------------------------------------------------- affichage
+function afficher() {
+  const ims = Array.isArray(donnees.immeubles) ? donnees.immeubles : [];
+  $("accueil").hidden = true; $("barre").hidden = false; $("kpis").hidden = false; $("pied").hidden = false;
 
-L'utilisateur analyse cette propriété potentiellement en détresse : **Adresse : ${address}**
+  const fmt = String(donnees.format);
+  $("pied").textContent = "Données générées le " + dateHeure(donnees.genere_le) + " (format " + fmt + ")."
+    + (FORMATS_CONNUS.includes(fmt) ? "" : " ⚠ Format inconnu de cette page : affichage possiblement incomplet.")
+    + " Écarts = valeur économique − prix demandé, arrondis au millier. MRB = prix demandé ÷ revenus bruts.";
 
-Fais une recherche web sur cette propriété. Consulte :
-1. Rôle d'évaluation foncière (Montréal: evaluation.montreal.ca, ou portail de la municipalité)
-2. Zonage (ville.montreal.qc.ca ou portail municipal)
-3. Historique transactions (sources publiques, Centris, JLR)
-4. Toute autre information pertinente
+  // Secteurs (liste déroulante)
+  const sel = $("secteur"), choisi = sel.value;
+  const secteurs = [...new Set(ims.map((i) => i.secteur).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
+  sel.innerHTML = '<option value="">Tous les secteurs</option>' + secteurs.map((s) => `<option${s === choisi ? " selected" : ""}>${esc(s)}</option>`).join("");
 
-Réponds UNIQUEMENT en JSON valide, sans markdown ni texte autour. Ta réponse doit commencer par le caractère { et rien d'autre — aucune phrase d'introduction, aucun avertissement, aucune note avant ou après le JSON :
-{"municipal":{"valeurFonciere":"425 000 $","valeurTerrain":"120 000 $","valeurBatiment":"305 000 $","taxes":"4 200 $/an","superficie":"120 m²","anneeConstruction":"1962","typePropriete":"Maison unifamiliale","matricule":"1234-56-7890","source":"Évaluation Montréal 2024","fiabilite":"haute"},"zonage":{"codeZone":"R-2","description":"Résidentiel faible densité","usagesPermis":["Habitation unifamiliale","Bifamiliale"],"restrictions":["Hauteur max 9m","Marge avant 5m"],"potentielDeveloppement":"Faible — zone protégée","source":"Règlement d'urbanisme","fiabilite":"haute"},"transactions":[{"date":"2018-06-15","prix":"385 000 $","type":"Vente"},{"date":"2005-03-22","prix":"210 000 $","type":"Vente"}],"proprietaire":{"nom":"Non disponible publiquement","depuis":"2018"},"analyse":{"scoreOpportunite":72,"niveauScore":"med","resume":"2-3 phrases sur l'opportunité pour un investisseur.","flags":[{"type":"positif","texte":"Valeur sous le marché"},{"type":"attention","texte":"Aucune transaction depuis 6 ans"},{"type":"risque","texte":"Zone inondable à vérifier"}]},"liens":{"evaluationFonciere":"https://evaluation.montreal.ca","registreFoncier":"https://registrefoncier.gouv.qc.ca","zonage":"https://ville.montreal.qc.ca"}}`;
-  console.log('[ImmoScan] Sending request to Claude API for:', address);
-  const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-  const data=await resp.json();
-  console.log('[ImmoScan] Claude raw response:', data);
-  if(!resp.ok){console.error('[ImmoScan] API error:', data);throw new Error(data.error?.message||'Erreur API Claude')}
-  // Combine ALL text blocks (web_search produces multiple), then extract the JSON object
-  const allText=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
-  if(!allText){console.error('[ImmoScan] No text in response. Content:', data.content);throw new Error('Réponse vide')}
-  console.log('[ImmoScan] Text response from Claude:', allText);
-  const parsed=extractJson(allText);
-  if(!parsed){console.error('[ImmoScan] Could not extract JSON from:', allText);throw new Error('Claude n\'a pas retourné de JSON exploitable')}
-  return parsed;
+  // État du dernier run
+  const et = $("etat"); et.hidden = !journal;
+  if (journal && journal.runs && journal.runs.length) {
+    const dernier = journal.runs[0];
+    et.className = "etat " + (dernier.probleme ? "ko" : "ok");
+    et.title = "Ouvrir le journal des runs";
+    et.innerHTML = `● <span class="lg">${dernier.probleme ? "Dernier run en problème : " : "Dernier run réussi : "}</span>`
+      + `<span class="ct">${dernier.probleme ? "Problème · " : "Dernier run · "}</span>` + dateHeure(dernier.date);
+  } else if (journal) {
+    et.className = "etat"; et.textContent = "Journal des runs";
+  }
+  afficherJournal();
+
+  // Bande d'indicateurs
+  const auj = aujourdhui();
+  const nouveaux = ims.filter((i) => i.date_analyse === auj).length;
+  $("kpis").innerHTML = kpi(ims.length, "immeubles au Radar") + kpi(nouveaux, "nouveaux aujourd'hui")
+    + kpi("—", "baisses de prix (à venir)", true) + kpi("—", "score (à venir)", true);
+
+  afficherCartes();
+}
+const kpi = (v, l, off) => `<div class="kpi${off ? " off" : ""}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
+
+function trier(ims) {
+  const t = $("tri").value, bas = (v) => (estNb(v) ? 0 : 1);
+  const recent = (a, b) => String(b.date_analyse || "").localeCompare(String(a.date_analyse || ""));
+  const cles = {
+    ecartC: (a, b) => bas(a.ecart?.C) - bas(b.ecart?.C) || (b.ecart?.C ?? 0) - (a.ecart?.C ?? 0) || recent(a, b),
+    ecartA: (a, b) => bas(a.ecart?.A) - bas(b.ecart?.A) || (b.ecart?.A ?? 0) - (a.ecart?.A ?? 0) || recent(a, b),
+    ppp: (a, b) => bas(a.prix_par_porte_demande) - bas(b.prix_par_porte_demande) || (a.prix_par_porte_demande ?? 0) - (b.prix_par_porte_demande ?? 0),
+    recent,
+  };
+  return [...ims].sort(cles[t] || cles.ecartC);
 }
 
-// Robustly pull a JSON object out of text that may have prose before/after it
-function extractJson(text){
-  // Try fenced code block first
-  let m=text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if(m){try{return JSON.parse(m[1].trim())}catch(e){}}
-  // Otherwise find the first { and match to its closing brace
-  const start=text.indexOf('{');
-  if(start<0)return null;
-  let depth=0,inStr=false,prev='';
-  for(let i=start;i<text.length;i++){
-    const ch=text[i];
-    if(inStr){if(ch==='"'&&prev!=='\\')inStr=false}
-    else{if(ch==='"')inStr=true;else if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0){const cand=text.slice(start,i+1);try{return JSON.parse(cand)}catch(e){return null}}}}
-    prev=ch;
+function afficherCartes() {
+  const ims = (donnees.immeubles || []).filter((i) => !$("secteur").value || i.secteur === $("secteur").value);
+  const libTri = $("tri").selectedOptions[0].textContent.replace(/^Trier : /, "");
+  $("sous-titre").textContent = ims.length + " immeuble" + (ims.length > 1 ? "s" : "") + " · trié par " + libTri;
+  const grille = $("grille");
+  grille.querySelectorAll(".carte").forEach((c) => c.remove());
+  if (!ims.length) { message("Aucun immeuble pour ce filtre."); return; }
+  $("accueil").hidden = true;
+  grille.insertAdjacentHTML("beforeend", trier(ims).map(carte).join(""));
+}
+
+function typo(t) {
+  if (!t || typeof t !== "object") return "";
+  const p = Object.entries(t).map(([k, n]) => `${n} × ${esc(String(k).replace(".5", "½"))}`);
+  return p.length ? " (" + p.join(", ") + ")" : "";
+}
+
+function ligneLoyer(lo) {
+  if (!lo || !estNb(lo.A)) return null;
+  let h = `Loyer moyen par porte : <b>${$$(lo.A)}/mois</b> actuel <span class="chk" title="Crochet posé par François après le rent roll — saisie à venir (Google Sheet D2)"></span>`;
+  if (estNb(lo.C)) h += ` → <b>${$$(lo.C)}/mois</b> potentiel (${estNb(lo.ecart) ? (lo.ecart >= 0 ? "+" : "−") + $$(Math.abs(lo.ecart)) : "—"})`;
+  return h;
+}
+
+function carte(im) {
+  const ve = im.valeur_economique || {}, ec = im.ecart || {}, mrb = im.mrb || {};
+  const adresse = String(im.adresse || "Adresse inconnue");
+  const courte = adresse.replace(/,\s*Montr[ée]al\s*$/i, "");
+  const q = encodeURIComponent(adresse);
+  const tag = [im.provenance === "centris" && im.no_inscription ? "Centris " + esc(im.no_inscription) : esc(im.id || ""),
+               "analysé le " + dateCourte(im.date_analyse)].filter(Boolean).join(" · ");
+
+  // Microfiche : la ligne du loyer est rendue depuis le champ structuré (crochet ✓), le reste tel quel.
+  const loyer = ligneLoyer(im.loyer_moyen_porte);
+  const mf = (im.microfiche || []).map((l) => (/^Loyer moyen par porte/.test(l) && loyer) ? loyer : esc(l));
+
+  const ecCase = (v, lib) => estNb(v)
+    ? `<td class="${v >= 0 ? "pos" : "neg"}"><span class="l">${lib}</span><b>${signe$(v)}</b></td>` : "<td></td>";
+
+  const P = im.portraits || {}, ligne = (lib, cle, f) =>
+    `<tr><td>${lib}</td>${["A", "B", "C"].map((p) => `<td>${P[p] && typeof P[p] === "object" ? f(P[p][cle]) : "—"}</td>`).join("")}</tr>`;
+  const n0 = (v) => estNb(v) ? nbFr.format(v) : "—";
+  const avert = [...(im.red_flags || []), ...(im.alertes || [])].filter((x) => x && x !== "…");
+  const payable = im.prix_payable && estNb(im.prix_payable.sur_revenus_actuels)
+    ? `<p>Prix payable (TGA ${pct(im.prix_payable.tga)}, revenus actuels) : ${$$(Math.round(im.prix_payable.sur_revenus_actuels))}</p>` : "";
+  const cr = im.cruncher || {};
+  const lienCr = cr.drive_id ? `https://drive.google.com/file/d/${encodeURIComponent(cr.drive_id)}/view` : null;
+
+  return `<article class="carte">
+  <div class="tag">${tag}</div>
+  <div><p class="adr">${esc(courte)}</p><div class="meta">${esc(im.secteur || "Secteur inconnu")} · ${estNb(im.nb_logements) ? im.nb_logements + " portes" : "portes ?"}${typo(im.typologie)}</div></div>
+  <div class="prix">
+   <div><div class="l">Prix demandé</div><div class="v">${$$(im.prix_demande)}</div></div>
+   <div><div class="l">Prix par porte</div><div class="v s">${$$(im.prix_par_porte_demande)}</div><div class="r">secteur : à venir</div></div>
+   <div><div class="l">MRB</div><div class="v s">${estNb(mrb.A) ? nb1.format(mrb.A) : "—"}</div>${estNb(mrb.C) ? `<div class="r">potentiel C : ${nb1.format(mrb.C)}</div>` : ""}</div>
+  </div>
+  <table class="abc">
+   <tr><th>A · actuel</th><th>B · converti</th><th>C · final</th></tr>
+   <tr class="val"><td>${$mille(ve.A)}</td><td>${$mille(ve.B)}</td><td>${$mille(ve.C)}</td></tr>
+   <tr class="ec">${ecCase(ec.A, "Écart A – à négocier")}<td></td>${ecCase(ec.C, "Écart C – potentiel")}</tr>
+  </table>
+  ${mf.length ? `<ul class="mf">${mf.map((l) => `<li>${l}</li>`).join("")}</ul>` : ""}
+  <details><summary>Détail</summary>
+   <table class="det"><tr><th></th><th>A</th><th>B</th><th>C</th></tr>
+    ${ligne("Revenus bruts", "revenus_bruts", n0)}${ligne("Dépenses", "depenses_totales", n0)}
+    ${ligne("RNO", "rno", n0)}${ligne("Facteur de dépenses", "facteur_depenses", pct)}
+    ${["A", "B", "C"].some((p) => estNb((im.tga_prix_demande || {})[p])) ? `<tr><td>TGA au prix demandé</td>${["A", "B", "C"].map((p) => `<td>${pct((im.tga_prix_demande || {})[p])}</td>`).join("")}</tr>` : ""}
+   </table>
+   <iframe class="det-plan" title="Carte" loading="lazy" referrerpolicy="no-referrer" data-src="https://maps.google.com/maps?q=${q}&z=15&output=embed"></iframe>
+   ${payable}
+   ${avert.map((a) => `<p class="flag">⚠ ${esc(a)}</p>`).join("")}
+   ${cr.nom ? `<p style="color:var(--mute)">Cruncher : ${esc(cr.nom)}</p>` : ""}
+  </details>
+  <div class="bas">
+   <a class="btn" target="_blank" rel="noopener" ${im.url ? `href="${esc(im.url)}"` : 'aria-disabled="true"'}>Centris</a>
+   <a class="btn p" target="_blank" rel="noopener" ${lienCr ? `href="${lienCr}"` : 'aria-disabled="true" title="Lien Drive pas encore connu"'}>Cruncher</a>
+   <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">Carte</a>
+   <button class="btn" type="button" data-partager="${esc(im.id || "")}" title="Envoyer cette fiche (image, lien Centris, copie du Cruncher)">Partager</button>
+   <span class="score">Score : ${estNb(im.score) ? esc(im.score) : "à venir"}</span>
+  </div>
+ </article>`;
+}
+
+// ---------------------------------------------------------------- partage d'une fiche (image + pièces jointes)
+// « Partager » sur une carte ouvre un panneau : la fiche est dessinée en image dans la page (avec le tableau
+// du détail et un plan), puis remise au menu de partage du téléphone (Messenger, WhatsApp, texto…), avec le
+// lien Centris et, au choix, une COPIE du Cruncher en pièce jointe (jamais un lien Drive) et les notes.
+// La personne qui reçoit n'a besoin d'aucun compte ni d'aucun accès au Drive. Aucun calcul : mêmes chiffres
+// que la carte. Plan : OpenStreetMap (l'adresse de l'immeuble y est envoyée pour la situer).
+const MIME_XLSM = "application/vnd.ms-excel.sheet.macroEnabled.12";
+// Notes de François par immeuble (clé = id). Rempli par l'étape « Notes » du chantier (feuille Radar_Saisies).
+let saisies = {};
+const noteDe = (im) => String((saisies[im.id] && saisies[im.id].note) || "").trim();
+const adresseCourte = (im) => String(im.adresse || "Adresse inconnue").replace(/,\s*Montr[ée]al\s*$/i, "");
+
+function couper(ctx, txt, larg) {
+  const lignes = [];
+  for (const par of String(txt).split(/\n/)) {
+    let l = "";
+    for (const m of par.split(/\s+/).filter(Boolean)) {
+      const e = l ? l + " " + m : m;
+      if (l && ctx.measureText(e).width > larg) { lignes.push(l); l = m; } else l = e;
+    }
+    lignes.push(l);
+  }
+  return lignes;
+}
+
+// ---- plan (OpenStreetMap) : adresse -> coordonnées -> tuiles. Échec = image sans plan, jamais de blocage.
+const cacheGeo = {};
+async function situer(adresse) {
+  if (cacheGeo[adresse]) return cacheGeo[adresse];
+  const propre = adresse.replace(/^(\d+)\s*,/, "$1");
+  const essais = [...new Set([propre, propre.replace(/^(\d+)\s*[-–]\s*\d+/, "$1")])];
+  for (const a of essais) {
+    try {
+      const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=ca&q="
+        + encodeURIComponent(a + ", Québec, Canada"));
+      const j = r.ok ? await r.json() : [];
+      if (j[0] && isFinite(+j[0].lat) && isFinite(+j[0].lon)) return (cacheGeo[adresse] = {lat: +j[0].lat, lon: +j[0].lon});
+    } catch (e) {}
   }
   return null;
 }
-
-// RENDER REPORT
-function renderReport(d){
-  const m=d.municipal||{},z=d.zonage||{},t=d.transactions||[],a=d.analyse||{},l=d.liens||{};
-  const fi={positif:'✅',attention:'⚠️',risque:'🔴'};
-  const sc=a.niveauScore||'low';
-  const slbl=sc==='high'?'Opportunité élevée':sc==='med'?'Opportunité moyenne':'Faible opportunité';
-  $('report').innerHTML=`
-    <div class="sv">${d.svUrl?`<img src="${d.svUrl}" alt="Street View" onerror="this.parentNode.innerHTML='<div class=\\'sv-none\\'>🏚️<span>Photo non disponible</span></div>'"/><div class="sv-tag">📸 Google Street View</div>`:`<div class="sv-none">🏚️<span>Ajouter clé Google Maps pour la photo</span></div>`}</div>
-    <div class="addr-card"><h2>${esc(d.address)}</h2><div class="badges">${m.typePropriete?`<span class="badge badge-t">${esc(m.typePropriete)}</span>`:''} ${z.codeZone?`<span class="badge badge-z">${esc(z.codeZone)}</span>`:''} ${m.anneeConstruction&&m.anneeConstruction!=='Non disponible'?`<span class="badge badge-y">Construit ${esc(m.anneeConstruction)}</span>`:''}</div></div>
-    <div class="ai-card">
-      <div class="ai-head"><div class="ai-ico">✦</div><h3>Analyse Claude</h3></div>
-      <div class="score-row"><div class="score-ring ring-${sc}">${a.scoreOpportunite||'—'}</div><div><div class="score-lbl">${slbl}</div><div class="score-sub">Score sur 100</div></div></div>
-      <div class="ai-summary">${esc(a.resume||'')}</div>
-      ${a.flags?.length?`<div class="flags">${a.flags.map(f=>`<div class="flag"><span class="flag-ico">${fi[f.type]||'•'}</span><span>${esc(f.texte)}</span></div>`).join('')}</div>`:''}
-    </div>
-    <div class="dsec">
-      <div class="dsec-head"><span>🏛️</span><h3>Rôle foncier</h3><span class="src">${esc(m.source||'')}</span></div>
-      <div class="drow"><span class="dlbl">Valeur foncière totale</span><span class="dval hl">${esc(m.valeurFonciere||'N/D')}</span></div>
-      <div class="drow"><span class="dlbl">Valeur du terrain</span><span class="dval">${esc(m.valeurTerrain||'N/D')}</span></div>
-      <div class="drow"><span class="dlbl">Valeur du bâtiment</span><span class="dval">${esc(m.valeurBatiment||'N/D')}</span></div>
-      <div class="drow"><span class="dlbl">Taxes annuelles</span><span class="dval">${esc(m.taxes||'N/D')}</span></div>
-      <div class="drow"><span class="dlbl">Superficie</span><span class="dval">${esc(m.superficie||'N/D')}</span></div>
-      <div class="drow"><span class="dlbl">No. matricule</span><span class="dval">${esc(m.matricule||'N/D')}</span></div>
-    </div>
-    <div class="dsec">
-      <div class="dsec-head"><span>🗺️</span><h3>Zonage</h3><span class="src">${esc(z.source||'')}</span></div>
-      <div class="drow"><span class="dlbl">Code de zone</span><span class="dval">${esc(z.codeZone||'N/D')}</span></div>
-      <div class="drow"><span class="dlbl">Description</span><span class="dval">${esc(z.description||'N/D')}</span></div>
-      <div class="drow"><span class="dlbl">Usages permis</span><span class="dval">${esc(Array.isArray(z.usagesPermis)?z.usagesPermis.join(', '):z.usagesPermis||'N/D')}</span></div>
-      ${z.restrictions?.length?`<div class="drow"><span class="dlbl">Restrictions</span><span class="dval">${esc(Array.isArray(z.restrictions)?z.restrictions.join(' · '):z.restrictions)}</span></div>`:''}
-      <div class="drow"><span class="dlbl">Potentiel dév.</span><span class="dval">${esc(z.potentielDeveloppement||'N/D')}</span></div>
-    </div>
-    ${t.length?`<div class="dsec"><div class="dsec-head"><span>📈</span><h3>Historique des transactions</h3></div>${t.map(tx=>`<div class="tx-row"><span class="tx-date">${esc(tx.date||'')}</span><div><div class="tx-price">${esc(tx.prix||'N/D')}</div><div class="tx-type">${esc(tx.type||'')}</div></div></div>`).join('')}</div>`:''}
-    <div class="dsec">
-      <div class="dsec-head"><span>👤</span><h3>Propriétaire</h3></div>
-      <div class="drow"><span class="dlbl">Nom</span><span class="dval">${esc((d.proprietaire||{}).nom||'Non disponible')}</span></div>
-      <div class="drow"><span class="dlbl">Depuis</span><span class="dval">${esc((d.proprietaire||{}).depuis||'N/D')}</span></div>
-    </div>
-    <div class="links-grid">
-      ${l.evaluationFonciere?`<a class="ext-link" href="${esc(l.evaluationFonciere)}" target="_blank"><span class="el-ico">🏛️</span><span class="el-lbl">Rôle foncier</span><span class="el-sub">Portail municipal</span></a>`:''}
-      ${l.registreFoncier?`<a class="ext-link" href="${esc(l.registreFoncier)}" target="_blank"><span class="el-ico">📋</span><span class="el-lbl">Registre foncier</span><span class="el-sub">Gouv. Québec</span></a>`:''}
-      ${l.zonage?`<a class="ext-link" href="${esc(l.zonage)}" target="_blank"><span class="el-ico">🗺️</span><span class="el-lbl">Zonage</span><span class="el-sub">Règlement urb.</span></a>`:''}
-      <a class="ext-link" href="https://www.google.com/maps?q=${encodeURIComponent(d.address)}" target="_blank"><span class="el-ico">📍</span><span class="el-lbl">Google Maps</span><span class="el-sub">Voir sur la carte</span></a>
-    </div>
-    <div class="notes-card">
-      <div class="notes-head"><span>📝</span><h3>Mes notes</h3></div>
-      <textarea id="noteText" placeholder="Ajoute tes observations…">${esc(d.note||'')}</textarea>
-      <div class="notes-foot"><button class="save-note" id="saveNoteBtn">Sauvegarder</button></div>
-    </div>`;
-  $('report').classList.add('show');
-  $('saveNoteBtn').addEventListener('click',()=>{currentReport.note=$('noteText').value;upsertHist(currentReport);showToast('✓ Note sauvegardée')});
+async function chargerPlan(adresse, l, h) {
+  const pt = await situer(adresse);
+  if (!pt) return null;
+  const Z = 16, T = 128, n = 2 ** Z, rad = pt.lat * Math.PI / 180;   // tuiles de 256 px dessinées à 128 : net à l'échelle 2
+  const px = (pt.lon + 180) / 360 * n * T, py = (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * n * T;
+  const x0 = px - l / 2, y0 = py - h / 2, attente = [];
+  for (let tx = Math.floor(x0 / T); tx * T < x0 + l; tx++) for (let ty = Math.floor(y0 / T); ty * T < y0 + h; ty++)
+    attente.push(new Promise((ok) => {
+      const i = new Image(); i.crossOrigin = "anonymous";
+      i.onload = () => ok({i, dx: tx * T - x0, dy: ty * T - y0}); i.onerror = () => ok(null);
+      i.src = `https://tile.openstreetmap.org/${Z}/${tx}/${ty}.png`;
+    }));
+  const tuiles = await Promise.all(attente);
+  return tuiles.every(Boolean) ? {tuiles, T, l, h} : null;
 }
+const delai = (ms) => new Promise((ok) => setTimeout(() => ok(null), ms));
 
-// HISTORY
-function renderHistory(){
-  const items=hist();const el=$('histList');
-  if(!items.length){el.innerHTML='<div class="hist-empty">Aucune propriété analysée.<br>Utilise l\'onglet Scan pour commencer.</div>';return}
-  const sc={high:'hs-h',med:'hs-m',low:'hs-l'};
-  el.innerHTML=items.map(item=>{
-    const score=item.analyse?.scoreOpportunite||'—';const level=item.analyse?.niveauScore||'low';
-    const thumb=item.svUrl?`<img src="${item.svUrl}" alt="" onerror="this.parentNode.innerHTML='🏚️'"/>`:'🏚️';
-    const date=item.date?new Date(item.date).toLocaleDateString('fr-CA'):'';
-    return`<div class="hist-item" data-addr="${esc(item.address)}"><div class="hist-thumb">${thumb}</div><div class="hist-info"><div class="hist-addr">${esc(item.address)}</div><div class="hist-date">${date}${item.note?' · 📝':''}</div></div><div class="hist-score ${sc[level]||'hs-l'}">${score}</div></div>`;
-  }).join('');
-  el.querySelectorAll('.hist-item').forEach(item=>item.addEventListener('click',()=>{
-    const entry=hist().find(h=>h.address===item.dataset.addr);
-    if(entry){switchTab('scan');$('addrInput').value=entry.address;$('xclear').style.display='block';currentReport=entry;$('emptyState').classList.add('hidden');renderReport(entry)}
-  }));
-}
-
-// ALERTS
-function renderAlerts(){
-  const c=cfg();const al=alerts();const wrap=$('alertsWrap');
-  const cfg_html=`<div class="alerts-config"><h3>🔔 Scan DuProprio / Kijiji</h3>
-    <div class="cfg-row"><label>URL DuProprio</label><input id="al-dp" type="url" placeholder="URL de recherche…" value="${esc(c.dpUrl||'')}"/></div>
-    <div class="cfg-row"><label>URL Kijiji</label><input id="al-kj" type="url" placeholder="URL de recherche…" value="${esc(c.kjUrl||'')}"/></div>
-    <div class="cfg-row"><label>Seuil</label><select id="al-thresh"><option value="5">−5%</option><option value="8" selected>−8%</option><option value="10">−10%</option><option value="15">−15%</option></select></div>
-    <button class="scan-btn" id="scanNowBtn">▶ Lancer le scan</button>
-    <div class="scan-status" id="scanStatus"></div></div>`;
-  const alerts_html=al.length?al.map(a=>{
-    const gap=parseFloat(a.priceGap||0);
-    return`<div class="alert-card"><div class="alert-top"><div class="alert-title">${esc(a.title)}</div><span class="badge ${gap<=-8?'badge-y':'badge-z'}" style="flex-shrink:0">${gap>0?'+':''}${gap}%</span></div><div class="alert-loc">📍 ${esc(a.location)}</div><div class="alert-prices"><div class="ap-item"><div class="ap-lbl">Demandé</div><div class="ap-val ap-red">${fmt$(a.price)}</div></div><div class="ap-item"><div class="ap-lbl">Marché estimé</div><div class="ap-val ap-green">${fmt$(a.marketPrice)}</div></div></div>${a.reasoning?`<div class="alert-reasoning">${esc(a.reasoning)}</div>`:''}<div class="alert-foot"><span class="src-badge ${a.source==='Kijiji'?'src-kj':'src-dp'}">${esc(a.source||'DuProprio')}</span><a class="open-link" href="${esc(a.url)}" target="_blank">Voir l'annonce →</a></div></div>`;
-  }).join(''):`<div class="no-alerts">Lance un scan pour détecter les propriétés affichées sous le prix du marché sur DuProprio et Kijiji.</div>`;
-  wrap.innerHTML=cfg_html+alerts_html;
-  $('scanNowBtn').addEventListener('click',async()=>{
-    const c2=cfg();
-    if(!c2.anthropic){showToast('⚙️ Configure ta clé Anthropic');$('overlay').classList.add('show');return}
-    const dp=$('al-dp').value.trim(),kj=$('al-kj').value.trim();
-    if(!dp&&!kj){showToast('⚠️ Entre au moins une URL de recherche');return}
-    $('scanNowBtn').disabled=true;$('scanStatus').textContent='⏳ Scan en cours…';
-    try{
-      const results=await runScan(dp,kj,$('al-thresh').value,c2.anthropic);
-      saveAlerts([...results,...alerts()]);renderAlerts();
-      showToast(results.length?`✓ ${results.length} aubaine(s) !`:'✓ Aucune aubaine détectée');
-    }catch(e){$('scanStatus').textContent='⚠️ '+(e.message||'Erreur')}
-    finally{$('scanNowBtn').disabled=false}
-  });
-}
-
-async function runScan(dpUrl,kjUrl,threshold,apiKey){
-  const prompt=`Tu es un expert immobilier au Québec, région de Montréal.
-Effectue une recherche web sur les nouvelles annonces immobilières dans la grande région de Montréal.
-${dpUrl?`Page DuProprio : ${dpUrl}`:''}${kjUrl?`\nPage Kijiji : ${kjUrl}`:''}
-Pour chaque propriété, estime le prix du marché et identifie celles à -${threshold}% ou plus sous ce prix.
-Réponds UNIQUEMENT en JSON valide (tableau, peut être []) :
-[{"id":"dp-123","title":"Maison – Villeray","location":"Montréal, Villeray","price":385000,"marketPrice":450000,"priceGap":-14.4,"reasoning":"Comparables vendus 440-460k dans ce secteur.","url":"https://duproprio.com/...","source":"DuProprio"}]`;
-  const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-  const data=await resp.json();
-  if(!resp.ok)throw new Error(data.error?.message||'Erreur API');
-  const allText=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
-  if(!allText)return[];
-  const arr=extractJsonArray(allText);
-  return Array.isArray(arr)?arr:[];
-}
-
-// Extract a JSON array from text that may contain prose
-function extractJsonArray(text){
-  let m=text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if(m){try{const p=JSON.parse(m[1].trim());if(Array.isArray(p))return p}catch(e){}}
-  const start=text.indexOf('[');
-  if(start<0)return[];
-  let depth=0,inStr=false,prev='';
-  for(let i=start;i<text.length;i++){
-    const ch=text[i];
-    if(inStr){if(ch==='"'&&prev!=='\\')inStr=false}
-    else{if(ch==='"')inStr=true;else if(ch==='[')depth++;else if(ch===']'){depth--;if(depth===0){try{return JSON.parse(text.slice(start,i+1))}catch(e){return[]}}}}
-    prev=ch;
-  }
-  return[];
-}
-
-// ═══════════════ CAPTURE ═══════════════
-function uid(){return 'p'+Date.now()+Math.random().toString(36).slice(2,6)}
-
-async function reverseGeocode(lat,lng){
-  const key=cfg().google||GOOGLE_KEY;
-  const url=`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}&language=fr`;
-  const r=await fetch(url);
-  const d=await r.json();
-  if(d.status==='OK'&&d.results&&d.results[0])return d.results[0].formatted_address;
-  return null;
-}
-
-$('bigCapture').addEventListener('click',()=>{
-  if(!navigator.geolocation){showToast('⚠️ GPS non disponible sur cet appareil');return}
-  const btn=$('bigCapture'),lbl=$('bigCaptureLabel'),ico=btn.querySelector('.bc-ico');
-  btn.classList.add('busy');ico.textContent='⏳';lbl.textContent='Localisation…';
-  $('capStatus').textContent='Récupération de ta position GPS…';
-
-  navigator.geolocation.getCurrentPosition(async(pos)=>{
-    const lat=pos.coords.latitude,lng=pos.coords.longitude;
-    $('capStatus').textContent='Position captée. Reconstitution de l\'adresse…';
-    let address=null;
-    try{address=await reverseGeocode(lat,lng)}catch(e){}
-    const entry=newProspEntry({lat,lng,address:address||`(${lat.toFixed(5)}, ${lng.toFixed(5)})`,title:address||'Nouvelle propriété',addressResolved:!!address});
-    addProsp(entry);
-    handleZonage(entry.id);
-    btn.classList.remove('busy');ico.textContent='✅';lbl.textContent='Capturé !';
-    $('capStatus').textContent=address?`✓ ${address}`:'✓ Position enregistrée (adresse à confirmer)';
-    setTimeout(()=>{ico.textContent='📍';lbl.textContent='Capturer ici';$('capStatus').textContent=''},3500);
-  },(err)=>{
-    btn.classList.remove('busy');ico.textContent='📍';lbl.textContent='Capturer ici';
-    $('capStatus').textContent='';
-    showToast(err.code===1?'⚠️ Autorise la géolocalisation':'⚠️ Position introuvable');
-  },{enableHighAccuracy:true,timeout:10000,maximumAge:0});
-});
-
-// Voice note (Web Speech API) — always attaches to the LAST capture
-let recognition=null,recording=false;
-$('voiceBtn').addEventListener('click',()=>{
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){showToast('⚠️ Dictée non supportée sur ce navigateur');return}
-  if(recording){recognition&&recognition.stop();return}
-  const p=prosp();
-  if(p.length===0){showToast('⚠️ Capture d\'abord une position');return}
-  recognition=new SR();recognition.lang='fr-CA';recognition.interimResults=false;
-  recognition.onstart=()=>{recording=true;$('voiceBtn').classList.add('recording');$('voiceBtn').textContent='⏹ Arrêter';$('capStatus').textContent='🎤 Parle maintenant…'};
-  recognition.onresult=(e)=>{
-    const text=e.results[0][0].transcript;
-    const cur=prosp();
-    const target=cur[0]; // most recent capture
-    const notes=[...(target.notes||[]),text];
-    updateProsp(target.id,{notes});
-    $('capStatus').textContent=`✓ Note ajoutée à « ${target.title||target.address} » : "${text}"`;
-    setTimeout(()=>{$('capStatus').textContent=''},4500);
+// ---- dessin de la fiche. opts : {plan, notes}
+const PLAN_H = 190;
+function dessinerFiche(ctx, im, L, opts) {
+  opts = opts || {};
+  const C = {ink: "#1d2330", mute: "#6b7280", line: "#e5e7eb", bg: "#f6f7f9", pos: "#0f7b4b", posbg: "#e6f4ec", neg: "#b42318", negbg: "#fdecea", acc: "#2446a8", warnbg: "#fff4de"};
+  const P = 24, larg = L - 2 * P, police = 'system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
+  const f = (taille, poids) => { ctx.font = `${poids || 400} ${taille}px ${police}`; };
+  const chemin = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
+  const boite = (x, y, w, h, couleur) => { ctx.fillStyle = couleur; chemin(x, y, w, h, 8); ctx.fill(); };
+  // Écrit un texte en réduisant la taille s'il dépasse la largeur donnée.
+  const ecrire = (txt, x, y, taille, poids, couleur, max, aligne) => {
+    let t = taille; f(t, poids);
+    while (max && t > 9 && ctx.measureText(txt).width > max) { t -= 0.5; f(t, poids); }
+    ctx.fillStyle = couleur; ctx.textAlign = aligne || "left"; ctx.fillText(txt, x, y);
   };
-  recognition.onerror=()=>{$('capStatus').textContent='⚠️ Dictée interrompue'};
-  recognition.onend=()=>{recording=false;$('voiceBtn').classList.remove('recording');$('voiceBtn').textContent='🎤 Ajouter note vocale'};
-  recognition.start();
-});
-
-// Photo
-$('photoBtn').addEventListener('click',()=>$('photoInput').click());
-$('photoInput').addEventListener('change',(e)=>{
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    const dataUrl=reader.result;
-    const p=prosp();
-    if(p.length===0){showToast('⚠️ Capture d\'abord une position');return}
-    updateProsp(p[0].id,{photo:dataUrl});
-    showToast('✓ Photo ajoutée à « '+(p[0].title||p[0].address)+' »');
+  const paragraphe = (txt, x, y, taille, poids, couleur, max, interligne) => {
+    f(taille, poids); ctx.fillStyle = couleur; ctx.textAlign = "left";
+    for (const l of couper(ctx, txt, max)) { ctx.fillText(l, x, y); y += interligne; }
+    return y;
   };
-  reader.readAsDataURL(file);
-});
+  const titre = (txt, y) => { ecrire(txt, P, y, 10.5, 650, C.mute); return y + 16; };
+  const ve = im.valeur_economique || {}, ec = im.ecart || {}, mrb = im.mrb || {}, lo = im.loyer_moyen_porte;
+  ctx.textBaseline = "alphabetic";
+  let y = P + 12;
 
-// Manual entry
-$('manualToggle').addEventListener('click',()=>$('manualRow').classList.toggle('hidden'));
-$('manualAdd').addEventListener('click',async()=>{
-  const addr=$('manualAddr').value.trim();if(!addr)return;
-  const btn=$('manualAdd');btn.disabled=true;btn.textContent='…';
-  let lat=null,lng=null;
-  if(window._manualGPS){lat=window._manualGPS.lat;lng=window._manualGPS.lng;window._manualGPS=null;}
-  else{
-    try{
-      const gr=await fetch('https://maps.googleapis.com/maps/api/geocode/json?address='+encodeURIComponent(addr)+'&key='+GOOGLE_KEY+'&language=fr');
-      const gd=await gr.json();
-      if(gd.status==='OK'&&gd.results[0]){const loc=gd.results[0].geometry.location;lat=loc.lat;lng=loc.lng;}
-    }catch(e){}
-  }
-  const entry=newProspEntry({address:addr,title:addr,addressResolved:true,lat,lng});
-  addProsp(entry);
-  btn.disabled=false;btn.textContent='+';
-  $('manualAddr').value='';$('manualRow').classList.add('hidden');
-  const mAC=$('manualACDiv');if(mAC){mAC.classList.remove('show');mAC.innerHTML=''}
-  if(lat&&lng){showToast('✓ Ajoutée — recherche du zonage…');handleZonage(entry.id);}
-  else{showToast('✓ Propriété ajoutée (sans GPS — Ajuster si besoin)');}
-});
-// Autocomplete pour l'entrée manuelle
-(()=>{
-  const inp=$('manualAddr');
-  const acDiv=document.createElement('div');acDiv.className='ac';acDiv.id='manualACDiv';
-  inp.parentNode.style.position='relative';
-  inp.parentNode.insertBefore(acDiv,inp.nextSibling);
-  let mTimer=null;
-  inp.addEventListener('input',e=>{
-    window._manualGPS=null;
-    const v=e.target.value.trim();clearTimeout(mTimer);
-    if(v.length<3){acDiv.classList.remove('show');acDiv.innerHTML='';return}
-    mTimer=setTimeout(()=>{
-      if(!acSvc)return;
-      acSvc.getPlacePredictions({input:v+' Québec',componentRestrictions:{country:'ca'},types:['address'],sessionToken:acToken},(preds,status)=>{
-        if(status!==google.maps.places.PlacesServiceStatus.OK||!preds){acDiv.classList.remove('show');acDiv.innerHTML='';return}
-        acDiv.innerHTML=preds.slice(0,5).map(p=>'<div class="ac-item" data-addr="'+p.description.replace(/"/g,'&quot;')+'"><span class="ac-pin">📍</span><div><div class="ac-main">'+p.structured_formatting.main_text+'</div><div class="ac-sub">'+(p.structured_formatting.secondary_text||'')+'</div></div></div>').join('');
-        acDiv.querySelectorAll('.ac-item').forEach(item=>item.addEventListener('click',async()=>{
-          inp.value=item.dataset.addr;acDiv.classList.remove('show');acDiv.innerHTML='';
-          window._manualGPS=null;
-          try{
-            const gr=await fetch('https://maps.googleapis.com/maps/api/geocode/json?address='+encodeURIComponent(item.dataset.addr)+'&key='+GOOGLE_KEY+'&language=fr');
-            const gd=await gr.json();
-            if(gd.status==='OK'&&gd.results[0]){const loc=gd.results[0].geometry.location;window._manualGPS={lat:loc.lat,lng:loc.lng};}
-          }catch(e){}
-        }));
-        acDiv.classList.add('show');
-      });
-    },280);
+  // Bandeau
+  ecrire("RADAR IMMOBILIER", P, y, 11, 650, C.mute);
+  ecrire([im.provenance === "centris" && im.no_inscription ? "Centris " + im.no_inscription : "",
+          "analysé le " + dateCourte(im.date_analyse)].filter(Boolean).join(" · "), L - P, y, 11, 400, C.mute, larg - 130, "right");
+  y += 30;
+
+  // Adresse, secteur, portes
+  y = paragraphe(adresseCourte(im), P, y, 22, 650, C.ink, larg, 27);
+  y = paragraphe((im.secteur || "Secteur inconnu") + " · " + (estNb(im.nb_logements) ? im.nb_logements + " portes" : "portes ?")
+    + typo(im.typologie), P, y - 6, 13, 400, C.mute, larg, 18) + 2;
+
+  // Prix demandé, prix par porte, MRB
+  const esp = 8, l1 = (larg - 2 * esp) * 0.41, l2 = (larg - 2 * esp) * 0.33, l3 = larg - 2 * esp - l1 - l2, h = 66;
+  [[P, l1, "Prix demandé", $$(im.prix_demande), 21, ""],
+   [P + l1 + esp, l2, "Prix par porte", $$(im.prix_par_porte_demande), 18, ""],
+   [P + l1 + l2 + 2 * esp, l3, "MRB", estNb(mrb.A) ? nb1.format(mrb.A) : "—", 18, estNb(mrb.C) ? "potentiel : " + nb1.format(mrb.C) : ""],
+  ].forEach(([x, w, lib, val, taille, note]) => {
+    boite(x, y, w, h, C.bg);
+    ecrire(lib, x + 10, y + 19, 11, 400, C.mute, w - 20);
+    ecrire(val, x + 10, y + 43, taille, 700, C.ink, w - 20);
+    if (note) ecrire(note, x + 10, y + 58, 10.5, 400, C.mute, w - 20);
   });
-  inp.addEventListener('keydown',e=>{if(e.key==='Escape'){acDiv.classList.remove('show');acDiv.innerHTML=''}});
-})();
+  y += h + 26;
 
-// ═══════════════ PROSPECT LIST ═══════════════
-function deleteProsp(id){const p=prosp().filter(x=>x.id!==id);saveProsp(p)}
-document.querySelectorAll('.pf-chip').forEach(c=>c.addEventListener('click',()=>{prospFilter=c.dataset.filter;document.querySelectorAll('.pf-chip').forEach(x=>x.classList.toggle('active',x===c));renderProsp()}));
-
-function renderProsp(){
-  const all=prosp();
-  const items=all.filter(p=>{
-    if(prospFilter==='archived')return p.archived;
-    if(p.archived)return false; // archived hidden from all other views
-    return prospFilter==='all'||p.status===prospFilter;
-  });
-  const el=$('prospList');
-  if(items.length===0){
-    const msg=prospFilter==='archived'?'Aucune propriété archivée.':'Aucune propriété ici.<br>Utilise l\'onglet 📍 Capture quand tu en spots une.';
-    el.innerHTML=`<div class="prosp-empty">${msg}</div>`;
-    return;
-  }
-  const stLabel={todo:'À vérifier',progress:'En cours',done:'Complétée',skip:'Écartée'};
-  const stClass={todo:'ps-todo',progress:'ps-progress',done:'ps-done',skip:'ps-skip'};
-  el.innerHTML=items.map(p=>{
-    const addr=encodeURIComponent(p.address);
-    const evalUrl='https://montreal.ca/role-evaluation-fonciere';
-    const regUrl='https://www.registrefoncier.gouv.qc.ca/Sirf/';
-    const zonUrl='https://montreal.ca/services/cartes-interactives-amenagement-du-territoire';
-    const mapUrl=p.lat?`https://www.google.com/maps?q=${p.lat},${p.lng}`:`https://www.google.com/maps?q=${addr}`;
-    const date=new Date(p.date).toLocaleDateString('fr-CA',{day:'numeric',month:'short',year:'numeric'});
-    const thumb=p.photo?`<img src="${p.photo}" alt=""/>`:'🏚️';
-    const notes=(p.notes||[]);
-    return `<div class="prosp-card" data-id="${p.id}">
-      <div class="prosp-top">
-        <div class="prosp-thumb">${thumb}</div>
-        <div class="prosp-info">
-          <div class="prosp-title-row"><span class="prosp-addr" data-field="title">${esc(p.title||p.address)}</span><button class="mini-edit" data-edit="title" title="Modifier le titre">✏️</button></div>
-          <div class="prosp-addr-line"><span data-field="address">${esc(p.address)}</span><button class="mini-edit" data-edit="address" title="Modifier l'adresse">✏️</button></div>
-          <div class="prosp-meta">📅 ${date}${p.addressResolved?'':' · 📍 GPS'}</div>
-        </div>
-        <span class="prosp-status-badge ${stClass[p.status]}">${stLabel[p.status]}</span>
-      </div>
-      ${notes.length?`<div class="prosp-notes">${notes.map((n,i)=>`<div class="pnote"><span class="pnote-ico">🎤</span><span class="pnote-txt">${esc(n)}</span><button class="pnote-del" data-noteidx="${i}" title="Supprimer cette note">✕</button></div>`).join('')}</div>`:''}
-      <div class="prosp-checklist">
-        ${p.evalwebResult
-  ?`<div class="pc-item checked" style="flex-direction:column;gap:2px;cursor:default;align-items:center;min-height:44px;justify-content:center"><span style="font-size:11px;font-weight:700">🏛️ ${fmtMoney(p.evalwebResult.valeurRole)}</span><span style="font-size:9px;opacity:.7">${esc(p.evalwebResult.noCompte||'—')}</span></div>`
-  :`<button class="pc-item" data-evalweb="1"><span class="pc-ico">🏛️</span>EvalWeb</button>`}
-        ${p.evalwebResult?.matricule?`<div class="pc-item checked" style="flex-direction:column;gap:2px;cursor:default;align-items:center;min-height:44px;justify-content:center"><span style="font-size:10px;font-weight:700">📋 Matricule</span><span style="font-size:9px;opacity:.7">${esc(p.evalwebResult.matricule)}</span></div>`:`<a class="pc-item ${p.checks.registre?'checked':''}" href="${regUrl}" target="_blank" data-check="registre"><span class="pc-ico">📋</span>Registre${p.checks.registre?' ✓':''}</a>`}
-        ${p.zonageResult
-          ?`<div class="pc-item checked" style="flex-direction:column;gap:2px;cursor:default;align-items:center"><span style="font-size:11px;font-weight:700;line-height:1.2">🗺️ ${esc(p.zonageResult.zone)}</span><div style="display:flex;gap:6px;align-items:center"><a href="${esc(p.zonageResult.lien)}" target="_blank" style="font-size:9px;color:var(--accent);text-decoration:none;pointer-events:all">📄 Fiche</a>${(spectrumUrl(p.zonageResult.arr,p.lat,p.lng))?`<a href="${spectrumUrl(p.zonageResult.arr,p.lat,p.lng)}" target="_blank" style="font-size:9px;color:var(--accent);text-decoration:none;pointer-events:all">🌐 Carte</a>`:''}</div></div>`
-          :`<button class="pc-item" data-zonage="1"><span class="pc-ico">🗺️</span>Zonage</button>`}
-        <button class="pc-item" data-adjust="1"><span class="pc-ico">🎯</span>Ajuster</button>
-      </div>
-      <div class="prosp-statusrow">
-        <button class="psr-btn ${p.status==='todo'?'active':''}" data-status="todo">À vérifier</button>
-        <button class="psr-btn ${p.status==='progress'?'active':''}" data-status="progress">En cours</button>
-        <button class="psr-btn ${p.status==='done'?'active':''}" data-status="done">Complétée</button>
-        <button class="psr-btn ${p.status==='skip'?'active':''}" data-status="skip">Écarter</button>
-      </div>
-      <div class="prosp-toolrow">
-        <a class="pt-btn" href="${mapUrl}" target="_blank">📍 Voir carte</a>
-        ${p.archived?`<button class="pt-btn" data-unarchive="1">📤 Désarchiver</button>`:`<button class="pt-btn" data-archive="1">📥 Archiver</button>`}
-        <button class="pt-btn danger" data-delete="1">🗑️ Supprimer</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  // Checklist link → open + mark checked
-  el.querySelectorAll('.pc-item[data-check]').forEach(a=>{
-    a.addEventListener('click',()=>{
-      const id=a.closest('.prosp-card').dataset.id;const check=a.dataset.check;
-      const p=prosp().find(x=>x.id===id);if(!p)return;
-      setTimeout(()=>{const checks={...p.checks,[check]:true};updateProsp(id,{checks,status:p.status==='todo'?'progress':p.status});renderProsp()},800);
-    });
-  });
-  // Zonage button → lookup via Worker
-  el.querySelectorAll('[data-zonage]').forEach(b=>b.addEventListener('click',()=>{
-    handleZonage(b.closest('.prosp-card').dataset.id);
-  }));
-  el.querySelectorAll('[data-evalweb]').forEach(b=>b.addEventListener('click',()=>{
-    handleEvalWeb(b.closest('.prosp-card').dataset.id);
-  }));
-  // Status buttons
-  el.querySelectorAll('.psr-btn').forEach(b=>b.addEventListener('click',()=>{
-    updateProsp(b.closest('.prosp-card').dataset.id,{status:b.dataset.status});renderProsp();
-  }));
-  // Edit title / address
-  el.querySelectorAll('.mini-edit').forEach(b=>b.addEventListener('click',async()=>{
-    const id=b.closest('.prosp-card').dataset.id;const field=b.dataset.edit;
-    const p=prosp().find(x=>x.id===id);if(!p)return;
-    const cur=field==='title'?(p.title||''):(p.address||'');
-    const val=prompt(field==='title'?'Titre de la propriété :':'Adresse :',cur);
-    if(val===null)return;
-    const changes={[field]:val.trim()};
-    // If address edited, re-geocode to update GPS point
-    if(field==='address'&&val.trim()){
-      changes.addressResolved=true;
-      try{
-        const key=cfg().google||GOOGLE_KEY;
-        const r=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(val.trim())}&key=${key}&language=fr`);
-        const d=await r.json();
-        if(d.status==='OK'&&d.results[0]){changes.lat=d.results[0].geometry.location.lat;changes.lng=d.results[0].geometry.location.lng}
-      }catch(e){}
-    }
-    updateProsp(id,changes);renderProsp();
-  }));
-  // Delete individual note
-  el.querySelectorAll('.pnote-del').forEach(b=>b.addEventListener('click',()=>{
-    const id=b.closest('.prosp-card').dataset.id;const idx=parseInt(b.dataset.noteidx);
-    const p=prosp().find(x=>x.id===id);if(!p)return;
-    const notes=[...(p.notes||[])];notes.splice(idx,1);
-    updateProsp(id,{notes});renderProsp();
-  }));
-  // Archive / unarchive
-  el.querySelectorAll('[data-archive]').forEach(b=>b.addEventListener('click',()=>{
-    updateProsp(b.closest('.prosp-card').dataset.id,{archived:true});renderProsp();showToast('📥 Archivée');
-  }));
-  el.querySelectorAll('[data-unarchive]').forEach(b=>b.addEventListener('click',()=>{
-    updateProsp(b.closest('.prosp-card').dataset.id,{archived:false});renderProsp();showToast('📤 Désarchivée');
-  }));
-  // Delete
-  el.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',()=>{
-    const id=b.closest('.prosp-card').dataset.id;
-    if(confirm('Supprimer définitivement cette propriété ?')){deleteProsp(id);renderProsp();showToast('🗑️ Supprimée')}
-  }));
-  // Adjust on map
-  el.querySelectorAll('[data-adjust]').forEach(b=>b.addEventListener('click',()=>{
-    openAdjustMap(b.closest('.prosp-card').dataset.id);
-  }));
-}
-
-// ═══════════════ ZONAGE MODULE ═══════════════
-async function handleZonage(id){
-  if(!ZONAGE_WORKER_URL){
-    showToast('⚙️ Configure ZONAGE_WORKER_URL dans le code');
-    return;
-  }
-  const p=prosp().find(x=>x.id===id);
-  if(!p){return;}
-  if(!p.lat||!p.lng){
-    showToast('⚠️ Pas de GPS — ajuste la position d\'abord');
-    return;
-  }
-  const card=document.querySelector(`.prosp-card[data-id="${id}"]`);
-  const btn=card?.querySelector('[data-zonage]');
-  if(btn){btn.disabled=true;btn.querySelector('.pc-ico').textContent='⏳';}
-  try{
-    const resp=await fetch(ZONAGE_WORKER_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({lat:p.lat,lng:p.lng})
-    });
-    const data=await resp.json();
-    if(!resp.ok)throw new Error(data.error||'Erreur zonage');
-    updateProsp(id,{
-      zonageResult:{zone:data.zone,lien:data.lien,arr:data.arrondissement},
-      checks:{...p.checks,zonage:true},
-      status:p.status==='todo'?'progress':p.status
-    });
-    renderProsp();
-    showToast('✓ Zone '+data.zone+' ('+data.arrondissement+')');
-  }catch(e){
-    if(btn){btn.disabled=false;btn.querySelector('.pc-ico').textContent='🗺️';}
-    showToast('⚠️ '+(e.message||'Erreur zonage'));
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers EvalWeb
-// ─────────────────────────────────────────────────────────────────────────────
-function fmtMoney(n){
-  if(!n && n!==0) return '—';
-  return Number(n).toLocaleString('fr-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0});
-}
-
-function parseMontrealAddress(addr){
-  if(!addr) return null;
-  const m = addr.trim().match(/^(\d+[A-Za-z]?)\s+([A-Za-z\u00C0-\u024F\.]+)\s+(.+?)(?:\s*[,\u2014].*)?$/i);
-  if(!m) return null;
-  const gmap={av:'Avenue',ave:'Avenue',avenue:'Avenue',rue:'Rue',boul:'Boulevard',blvd:'Boulevard',boulevard:'Boulevard',ch:'Chemin',chemin:'Chemin',pl:'Place',place:'Place',cr:'Croissant',cres:'Croissant',sq:'Square',square:'Square'};
-  const gRaw=m[2].replace(/\.$/,'').toLowerCase();
-  const streetGeneric=gmap[gRaw]||(m[2].replace(/\.$/,''));
-  const streetName=m[3].trim().toUpperCase().replace(/[,\u2014].*$/,'').trim();
-  return {civicNumber:m[1],streetGeneric,streetName};
-}
-
-async function handleEvalWeb(id){
-  const p=prosp().find(x=>x.id===id);
-  if(!p) return;
-  const parsed=parseMontrealAddress(p.address||p.title||'');
-  if(!parsed){showToast('Adresse non reconnue — vérifiez le format');return;}
-  showToast('Recherche évaluation foncière…');
-  try{
-    const r=await fetch(EVALWEB_WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(parsed)});
-    const data=await r.json();
-    if(!r.ok||data.error) throw new Error(data.error||'Erreur');
-    updateProsp(id,{evalwebResult:data,checks:{...p.checks,evalweb:true}});
-    showToast('Évaluation chargée ✓');
-  }catch(e){
-    showToast('Erreur EvalWeb: '+e.message);
-  }
-}
-
-// ═══════════════ MAP ADJUSTMENT ═══════════════
-let adjustMap=null,adjustMarker=null,adjustPano=null,adjustId=null;
-function openAdjustMap(id){
-  const p=prosp().find(x=>x.id===id);if(!p)return;
-  adjustId=id;
-  const lat=p.lat||45.5577,lng=p.lng||-73.5673; // default Montréal if no GPS
-  $('adjustOverlay').classList.add('show');
-  $('adjustAddrPreview').textContent=p.address||'(position à confirmer)';
-  // notes reminder
-  $('adjustNotes').innerHTML=(p.notes||[]).length?(p.notes||[]).map(n=>`🎤 ${esc(n)}`).join('<br>'):'<span style="color:var(--muted)">Aucune note</span>';
-  setTimeout(()=>{
-    if(!window.google){showToast('⚠️ Carte non disponible (clé Google)');return}
-    adjustMap=new google.maps.Map($('adjustMapDiv'),{center:{lat,lng},zoom:18,mapTypeId:'roadmap',streetViewControl:true,fullscreenControl:false,mapTypeControl:true});
-    adjustMarker=new google.maps.Marker({position:{lat,lng},map:adjustMap,draggable:true});
-    adjustMarker.addListener('dragend',()=>updateAdjustPreview());
-    adjustMap.addListener('click',(e)=>{adjustMarker.setPosition(e.latLng);updateAdjustPreview()});
-    // Autocomplete dans le champ de recherche Ajuster
-    (()=>{
-      const adjInput=$('adjustSearch'),adjAC=$('adjustAC');
-      if(!adjInput)return;
-      adjInput.value='';
-      let adjTimer=null;
-      adjInput.addEventListener('input',e=>{
-        const v=e.target.value.trim();clearTimeout(adjTimer);
-        if(v.length<3){adjAC.classList.remove('show');adjAC.innerHTML='';return}
-        adjTimer=setTimeout(()=>{
-          if(!acSvc)return;
-          acSvc.getPlacePredictions({input:v+' Montréal',componentRestrictions:{country:'ca'},types:['address'],sessionToken:acToken},(preds,status)=>{
-            if(status!==google.maps.places.PlacesServiceStatus.OK||!preds){adjAC.classList.remove('show');adjAC.innerHTML='';return}
-            adjAC.innerHTML=preds.slice(0,5).map(p=>'<div class="ac-item" data-addr="'+p.description.replace(/"/g,'&quot;')+'"><span class="ac-pin">📍</span><div><div class="ac-main">'+p.structured_formatting.main_text+'</div><div class="ac-sub">'+(p.structured_formatting.secondary_text||'')+'</div></div></div>').join('');
-            adjAC.querySelectorAll('.ac-item').forEach(item=>item.addEventListener('click',async()=>{
-              adjInput.value=item.dataset.addr;adjAC.classList.remove('show');adjAC.innerHTML='';
-              try{
-                const resp2=await fetch('https://maps.googleapis.com/maps/api/geocode/json?address='+encodeURIComponent(item.dataset.addr)+'&key='+GOOGLE_KEY+'&language=fr');
-                const d=await resp2.json();
-                if(d.status==='OK'&&d.results[0]){
-                  const loc=d.results[0].geometry.location;
-                  const pos=new google.maps.LatLng(loc.lat,loc.lng);
-                  adjustMarker.setPosition(pos);adjustMap.panTo(pos);adjustMap.setZoom(18);
-                  updateAdjustPreview();
-                }
-              }catch(err){showToast('Géocodage échoué')}
-            }));
-            adjAC.classList.add('show');
-          });
-        },280);
-      });
-      adjInput.addEventListener('keydown',e=>{if(e.key==='Escape'){adjAC.classList.remove('show');adjAC.innerHTML=''}});
-    })();
-    // Street View shares the same panorama position
-    adjustPano=adjustMap.getStreetView();
-    adjustPano.setPosition({lat,lng});
-  },200);
-}
-async function updateAdjustPreview(){
-  const pos=adjustMarker.getPosition();
-  $('adjustAddrPreview').textContent='Reconstitution…';
-  try{const a=await reverseGeocode(pos.lat(),pos.lng());$('adjustAddrPreview').textContent=a||`(${pos.lat().toFixed(5)}, ${pos.lng().toFixed(5)})`}
-  catch(e){$('adjustAddrPreview').textContent=`(${pos.lat().toFixed(5)}, ${pos.lng().toFixed(5)})`}
-}
-$('adjustSave').addEventListener('click',async()=>{
-  if(!adjustMarker||!adjustId){$('adjustOverlay').classList.remove('show');return}
-  const pos=adjustMarker.getPosition();const lat=pos.lat(),lng=pos.lng();
-  let address=null;try{address=await reverseGeocode(lat,lng)}catch(e){}
-  const changes={lat,lng,addressResolved:!!address};
-  if(address){changes.address=address;const p=prosp().find(x=>x.id===adjustId);if(p&&(!p.title||p.title==='Nouvelle propriété'||p.title===p.address))changes.title=address}
-  updateProsp(adjustId,changes);
-  $('adjustOverlay').classList.remove('show');adjustMap=null;adjustMarker=null;adjustId=null;
-  renderProsp();showToast('✓ Position ajustée');
-});
-$('adjustCancel').addEventListener('click',()=>{$('adjustOverlay').classList.remove('show');adjustMap=null;adjustMarker=null;adjustId=null});
-
-// INIT
-window.addEventListener('load',()=>{checkConfig();initMaps()});
-
-// ═══════════════════════════════════════════════════════
-// GOOGLE DRIVE SYNC
-// ═══════════════════════════════════════════════════════
-// CONFIGURATION REQUISE :
-//   Remplace la valeur de GIS_CLIENT_ID ci-dessous par ton
-//   Client ID OAuth 2.0 (console.cloud.google.com →
-//   API et services → Identifiants → ID client OAuth).
-//   Exemple : '123456789-abcdefgh.apps.googleusercontent.com'
-// ═══════════════════════════════════════════════════════
-
-const DRIVE_TOKEN_KEY = 'imsc_drv_token';
-const DRIVE_DATA_FILE = 'immoscan_data.json';
-const DRIVE_CFG_FILE  = 'immoscan_cfg.json';
-const GIS_CLIENT_ID   = '791511316524-c82bmsntb91lgj6ji3egi39lqio0p4e9.apps.googleusercontent.com';
-
-let driveToken      = null;
-let driveSyncTimer  = null;
-let driveDataFileId = null;
-let driveCfgFileId  = null;
-
-function getDriveToken() {
-  try {
-    const t = JSON.parse(localStorage.getItem(DRIVE_TOKEN_KEY) || 'null');
-    if (!t || Date.now() > t.expires) return null;
-    return t;
-  } catch { return null; }
-}
-
-function setDriveToken(tokenObj) {
-  const t = { access_token: tokenObj.access_token, expires: Date.now() + (tokenObj.expires_in - 60) * 1000 };
-  localStorage.setItem(DRIVE_TOKEN_KEY, JSON.stringify(t));
-  driveToken = t;
-}
-
-function clearDriveToken() {
-  localStorage.removeItem(DRIVE_TOKEN_KEY);
-  driveToken = null;
-  driveDataFileId = null;
-  driveCfgFileId  = null;
-}
-
-async function initDrive() {
-  const t = getDriveToken();
-  if (!t) return;
-  driveToken = t;
-  updateDriveStatus('syncing', '☁️ Synchronisation…');
-  try {
-    await drivePullAll();
-    updateDriveStatus('connected', '✓ Drive connecté · ' + new Date().toLocaleTimeString('fr-CA', {hour:'2-digit',minute:'2-digit'}));
-  } catch(e) {
-    updateDriveStatus('error', '⚠️ Erreur Drive : ' + (e.message || 'connexion échouée'));
-  }
-}
-
-function updateDriveStatus(state, msg) {
-  const el = $('driveStatus');
-  if (!el) return;
-  el.className = 'drive-status ' + state;
-  el.textContent = msg;
-  const connectBtn = $('btnDriveConnect');
-  const syncBtn    = $('btnDriveSync');
-  if (connectBtn && syncBtn) {
-    const connected = state === 'connected' || state === 'syncing';
-    connectBtn.style.display = connected ? 'none' : 'block';
-    syncBtn.style.display    = connected ? 'block' : 'none';
-  }
-}
-
-async function driveApi(method, path, body, params) {
-  if (!driveToken) throw new Error('Non authentifié');
-  const url = new URL('https://www.googleapis.com' + path);
-  if (params) Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
-  const opts = { method, headers: { 'Authorization': 'Bearer ' + driveToken.access_token } };
-  if (body) {
-    if (typeof body === 'string') {
-      opts.headers['Content-Type'] = 'application/json';
-      opts.body = body;
-    } else {
-      opts.body = body;
-    }
-  }
-  const resp = await fetch(url.toString(), opts);
-  if (resp.status === 401) { clearDriveToken(); throw new Error('Token expiré'); }
-  if (!resp.ok) throw new Error('Drive API ' + resp.status);
-  if (resp.status === 204) return null;
-  return resp.json();
-}
-
-async function driveFindFile(name) {
-  const data = await driveApi('GET', '/drive/v3/files', null, {
-    q: `name='${name}' and trashed=false`,
-    fields: 'files(id,name,modifiedTime)',
-    spaces: 'drive'
-  });
-  return data.files && data.files[0] ? data.files[0] : null;
-}
-
-async function driveReadFile(fileId) {
-  const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-    headers: { 'Authorization': 'Bearer ' + driveToken.access_token }
-  });
-  if (!resp.ok) throw new Error('Drive read ' + resp.status);
-  return resp.json();
-}
-
-async function driveWriteFile(fileId, name, content_obj) {
-  const metadata     = JSON.stringify({ name, mimeType: 'application/json' });
-  const body_content = JSON.stringify(content_obj);
-  const boundary     = 'immoscan_boundary';
-  const multipart    = `--${boundary}
-Content-Type: application/json; charset=UTF-8
-
-${metadata}
---${boundary}
-Content-Type: application/json
-
-${body_content}
---${boundary}--`;
-  const url = fileId
-    ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
-    : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-  const resp = await fetch(url, {
-    method: fileId ? 'PATCH' : 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + driveToken.access_token,
-      'Content-Type': `multipart/related; boundary=${boundary}`
-    },
-    body: multipart
-  });
-  if (!resp.ok) throw new Error('Drive write ' + resp.status);
-  return resp.json();
-}
-
-function mergeProspects(local, remote) {
-  const map = new Map();
-  [...(remote || []), ...(local || [])].forEach(p => {
-    const existing = map.get(p.id);
-    if (!existing || new Date(p.date) >= new Date(existing.date)) {
-      map.set(p.id, p);
+  // Valeur économique A / B / C et écarts
+  const lc = (larg - 2 * esp) / 3, hE = 52, aEcart = estNb(ec.A) || estNb(ec.C);
+  [["A · actuel", ve.A, ec.A], ["B · converti", ve.B, null], ["C · final", ve.C, ec.C]].forEach(([lib, val, ecart], i) => {
+    const x = P + i * (lc + esp), cx = x + lc / 2;
+    ecrire(lib, cx, y, 11, 400, C.mute, lc - 8, "center");
+    ecrire($mille(val), cx, y + 24, 17, 650, C.ink, lc - 8, "center");
+    if (estNb(ecart)) {
+      boite(x, y + 36, lc, hE, ecart >= 0 ? C.posbg : C.negbg);
+      ecrire("Écart avec le prix demandé", cx, y + 54, 9.5, 400, C.mute, lc - 10, "center");
+      ecrire(signe$(ecart), cx, y + 76, 17, 700, ecart >= 0 ? C.pos : C.neg, lc - 10, "center");
     }
   });
-  return Array.from(map.values()).sort((a,b) => new Date(b.date) - new Date(a.date));
-}
+  y += 36 + (aEcart ? hE + 26 : 14);
 
-async function drivePullAll() {
-  // Config
-  const cfgFile = await driveFindFile(DRIVE_CFG_FILE);
-  if (cfgFile) {
-    driveCfgFileId = cfgFile.id;
-    const remoteCfg = await driveReadFile(cfgFile.id);
-    const localCfg  = cfg();
-    const merged    = { ...localCfg, ...remoteCfg, google: localCfg.google || remoteCfg.google };
-    saveCfg(merged);
-    checkConfig();
+  // Microfiche (la ligne du loyer est refaite depuis le champ structuré, comme sur la carte)
+  const loyer = lo && estNb(lo.A)
+    ? `Loyer moyen par porte : ${$$(lo.A)}/mois actuel` + (estNb(lo.C) ? ` → ${$$(lo.C)}/mois potentiel (${estNb(lo.ecart) ? (lo.ecart >= 0 ? "+" : "−") + $$(Math.abs(lo.ecart)) : "—"})` : "")
+    : null;
+  const mf = (im.microfiche || []).map((t) => (/^Loyer moyen par porte/.test(t) && loyer) ? loyer : String(t));
+  for (const l of mf) {
+    ecrire("•", P + 2, y, 13, 400, C.ink);
+    y = paragraphe(l, P + 16, y, 13, 400, C.ink, larg - 16, 18.5) + 4;
   }
-  // Données
-  const dataFile = await driveFindFile(DRIVE_DATA_FILE);
-  if (dataFile) {
-    driveDataFileId = dataFile.id;
-    const remote = await driveReadFile(dataFile.id);
-    if (remote && remote.prospects) {
-      const merged = mergeProspects(prosp(), remote.prospects);
-      saveProsp(merged);
+  if (mf.length) y += 12;
+
+  // Tableau du détail : revenus, dépenses, RNO, facteur de dépenses (+ TGA au prix demandé quand la machine le fournit)
+  const Pt = im.portraits || {}, tg = im.tga_prix_demande || {};
+  const aPortrait = ["A", "B", "C"].some((p) => Pt[p] && typeof Pt[p] === "object");
+  if (aPortrait) {
+    const n0 = (v) => estNb(v) ? nbFr.format(v) + " $" : "—", colL = larg * 0.37, colW = (larg - colL) / 3, hl = 25;
+    const lignes = [["Revenus bruts", (p) => n0((Pt[p] || {}).revenus_bruts)], ["Dépenses", (p) => n0((Pt[p] || {}).depenses_totales)],
+                    ["Revenu net (RNO)", (p) => n0((Pt[p] || {}).rno)], ["Facteur de dépenses", (p) => pct((Pt[p] || {}).facteur_depenses)]];
+    if (["A", "B", "C"].some((p) => estNb(tg[p]))) lignes.push(["TGA au prix demandé", (p) => pct(tg[p])]);
+    y = titre("DÉTAIL", y);
+    ["A · actuel", "B · converti", "C · final"].forEach((t, i) => ecrire(t, P + colL + (i + 1) * colW, y, 10.5, 400, C.mute, colW - 6, "right"));
+    y += 8;
+    for (const [lib, val] of lignes) {
+      ctx.fillStyle = C.line; ctx.fillRect(P, y, larg, 1);
+      ecrire(lib, P, y + 17, 12.5, 400, C.ink, colL - 6);
+      ["A", "B", "C"].forEach((p, i) => ecrire(val(p), P + colL + (i + 1) * colW, y + 17, 12.5, 500, C.ink, colW - 6, "right"));
+      y += hl;
     }
-    if (remote && remote.hist)   saveHist(remote.hist);
-    if (remote && remote.alerts) saveAlerts(remote.alerts);
+    y += 16;
   }
-  if (currentTab === 'prosp')   renderProsp();
-  if (currentTab === 'history') renderHistory();
+
+  // Plan
+  if (opts.plan) {
+    const pl = opts.plan;
+    ctx.save(); chemin(P, y, larg, pl.h, 10); ctx.clip();
+    ctx.fillStyle = C.bg; ctx.fillRect(P, y, larg, pl.h);
+    for (const t of pl.tuiles) ctx.drawImage(t.i, P + t.dx, y + t.dy, pl.T, pl.T);
+    const cx = P + larg / 2, cy = y + pl.h / 2;                       // repère de l'immeuble
+    ctx.beginPath(); ctx.arc(cx, cy, 15, 0, 2 * Math.PI); ctx.fillStyle = "rgba(180,35,24,.18)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 6.5, 0, 2 * Math.PI); ctx.fillStyle = C.neg; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = "#fff"; ctx.stroke();
+    f(9, 400); const cr = "© OpenStreetMap", lw = ctx.measureText(cr).width + 10;
+    ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.fillRect(P + larg - lw, y + pl.h - 16, lw, 16);
+    ctx.fillStyle = C.mute; ctx.textAlign = "right"; ctx.fillText(cr, P + larg - 5, y + pl.h - 5);
+    ctx.restore();
+    ctx.lineWidth = 1; ctx.strokeStyle = C.line; chemin(P + .5, y + .5, larg - 1, pl.h - 1, 10); ctx.stroke();
+    y += pl.h + 24;
+  }
+
+  // Notes (seulement si François choisit de les joindre)
+  if (opts.notes) {
+    y = titre("NOTES", y);
+    f(12.5, 400);
+    const lg = couper(ctx, opts.notes, larg - 24), hn = lg.length * 18 + 18;
+    boite(P, y - 4, larg, hn, C.warnbg);
+    paragraphe(opts.notes, P + 12, y + 15, 12.5, 400, C.ink, larg - 24, 18);
+    y += hn + 18;
+  }
+
+  // Pied
+  ctx.fillStyle = C.line; ctx.fillRect(P, y - 6, larg, 1); y += 12;
+  y = paragraphe("Valeur économique = revenu net ÷ TGA" + (estNb(ve.tga) ? " de " + pct(ve.tga) : "") + ". Écart = valeur économique − prix demandé, arrondi au millier."
+    + " MRB = prix demandé ÷ revenus bruts. Estimation préliminaire, à valider.", P, y, 10.5, 400, C.mute, larg, 15);
+  return y + P - 12;
+}
+function imageFiche(im, opts) {
+  const L = 540, ECHELLE = 2, brouillon = document.createElement("canvas");
+  brouillon.width = 8; brouillon.height = 8;
+  let ctx = brouillon.getContext("2d");
+  const haut = Math.ceil(dessinerFiche(ctx, im, L, Object.assign({}, opts, {plan: opts && opts.plan ? {tuiles: [], T: 0, h: opts.plan.h} : null})));  // 1er passage : mesure
+  const toile = document.createElement("canvas");
+  toile.width = L * ECHELLE; toile.height = haut * ECHELLE;
+  ctx = toile.getContext("2d"); ctx.scale(ECHELLE, ECHELLE);
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, L, haut);
+  dessinerFiche(ctx, im, L, opts);
+  // Conversion immédiate (sans attente) : le menu de partage doit s'ouvrir dans le même geste.
+  const brut = atob(toile.toDataURL("image/png").split(",")[1]), octets = new Uint8Array(brut.length);
+  for (let i = 0; i < brut.length; i++) octets[i] = brut.charCodeAt(i);
+  return new Blob([octets], {type: "image/png"});
 }
 
-function drivePushDebounced() {
-  if (!driveToken) return;
-  clearTimeout(driveSyncTimer);
-  driveSyncTimer = setTimeout(drivePushNow, 3000);
+// ---- panneau de partage
+let pp = null;   // partage en cours : {im, plan, planFini, cruncher, crFini, crErreur, image}
+const nomSur = (s) => String(s).replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+const tailleMo = (o) => nb1.format(o / 1048576) + " Mo";
+function majPartage() {
+  const e = pp; if (!e) return;
+  const avecNotes = e.note && $("pp-notes").checked, avecCr = e.crPossible && $("pp-cr").checked;
+  try { e.image = imageFiche(e.im, {plan: e.plan, notes: avecNotes ? e.note : ""}); } catch (err) { e.image = null; }
+  if (e.urlApercu) URL.revokeObjectURL(e.urlApercu);
+  e.urlApercu = e.image ? URL.createObjectURL(e.image) : ""; $("pp-apercu").src = e.urlApercu;
+  const pret = e.image && e.planFini && (!avecCr || e.crFini);
+  $("pp-envoyer").disabled = !pret;
+  let t = "";
+  if (!e.image) t = "L'image n'a pas pu être produite.";
+  else if (!e.planFini) t = "Préparation du plan…";
+  else if (avecCr && !e.crFini) t = "Préparation de la copie du Cruncher…";
+  else {
+    const p = ["Image de la fiche"];
+    if (avecCr && e.cruncher) p.push("copie du Cruncher (" + tailleMo(e.cruncher.size) + ")");
+    if (e.im.url) p.push("lien Centris");
+    t = "Prêt : " + p.join(" + ") + "." + (e.plan ? "" : " Plan indisponible pour cette adresse.");
+    if (avecCr && !e.cruncher) t += " ⚠ Cruncher non joint : " + (e.crErreur || "fichier introuvable") + ".";
+  }
+  if (e.avis) t = e.avis;
+  $("pp-etat").textContent = t;
 }
-
-async function drivePushNow() {
-  if (!driveToken) return;
-  updateDriveStatus('syncing', '☁️ Sauvegarde…');
-  try {
-    const dataContent = {
-      version: 1,
-      lastModified: new Date().toISOString(),
-      deviceId: getDeviceId(),
-      prospects: prosp(),
-      hist: hist(),
-      alerts: alerts()
-    };
-    const dataResult = await driveWriteFile(driveDataFileId, DRIVE_DATA_FILE, dataContent);
-    driveDataFileId  = dataResult.id;
-    const cfgData    = cfg();
-    const cfgContent = { version: 1, ...cfgData };
-    delete cfgContent.google;
-    const cfgResult = await driveWriteFile(driveCfgFileId, DRIVE_CFG_FILE, cfgContent);
-    driveCfgFileId  = cfgResult.id;
-    updateDriveStatus('connected', '✓ Sync Drive · ' + new Date().toLocaleTimeString('fr-CA', {hour:'2-digit',minute:'2-digit'}));
-  } catch(e) {
-    updateDriveStatus('error', '⚠️ ' + (e.message || 'erreur sync'));
+function ouvrirPartage(im) {
+  const cr = im.cruncher || {}, e = pp = {im, note: noteDe(im), plan: null, planFini: false, cruncher: null, crFini: false, crErreur: "", crPossible: !!(cr.drive_id && jeton)};
+  $("pp-titre").textContent = "Partager — " + adresseCourte(im);
+  $("pp-l-notes").hidden = !e.note; $("pp-notes").checked = true;
+  $("pp-cr").checked = e.crPossible; $("pp-cr").disabled = !e.crPossible;
+  $("pp-l-cr").style.opacity = e.crPossible ? "" : ".5";
+  majPartage();
+  const d = $("pp"); if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+  // Plan : au plus 7 secondes, puis on continue sans.
+  Promise.race([chargerPlan(String(im.adresse || ""), 540 - 48, PLAN_H).catch(() => null), delai(7000)])
+    .then((p) => { if (pp !== e) return; e.plan = p; e.planFini = true; majPartage(); });
+  // Copie du Cruncher : téléchargée depuis le Drive de François, pour être envoyée en pièce jointe.
+  if (e.crPossible) {
+    drive(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(cr.drive_id)}?alt=media&supportsAllDrives=true`)
+      .then((r) => r.blob())
+      .then((b) => { e.cruncher = new File([b], nomSur(cr.nom || "Cruncher.xlsm"), {type: b.type && b.type !== "application/octet-stream" ? b.type : MIME_XLSM}); })
+      .catch((err) => { e.crErreur = err && err.reconnecter ? "session Google expirée, reconnecte-toi" : "le fichier n'a pas pu être lu dans le Drive"; })
+      .then(() => { e.crFini = true; if (pp === e) majPartage(); });
   }
 }
-
-function getDeviceId() {
-  let id = localStorage.getItem('imsc_device_id');
-  if (!id) { id = 'dev_' + Math.random().toString(36).slice(2,10); localStorage.setItem('imsc_device_id', id); }
-  return id;
+function fermerPartage() {
+  if (pp && pp.urlApercu) URL.revokeObjectURL(pp.urlApercu);
+  pp = null; const d = $("pp"); if (d.close) d.close(); else d.removeAttribute("open");
 }
-
-$('btnDriveConnect').addEventListener('click', () => {
-  if (!GIS_CLIENT_ID) {
-    alert('Configure ton Client ID Google OAuth dans le code.\n\nVoir : console.cloud.google.com → Identifiants → ID client OAuth 2.0\n\nRemplace la valeur de GIS_CLIENT_ID dans index.html.');
+function telechargerFichier(fichier) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(fichier); a.download = fichier.name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+}
+// Appelé directement par le clic sur « Envoyer » : tout est déjà prêt, le menu de partage s'ouvre dans le même geste.
+async function envoyerPartage() {
+  const e = pp; if (!e || !e.image) return;
+  const im = e.im, courte = adresseCourte(im);
+  const image = new File([e.image], "Fiche - " + nomSur(courte) + ".png", {type: "image/png"});
+  const cr = e.crPossible && $("pp-cr").checked ? e.cruncher : null;
+  const texte = courte + (im.url ? "\n" + im.url : "");
+  const peut = (f) => { try { return !!(navigator.canShare && navigator.share && navigator.canShare({files: f})); } catch (err) { return false; } };
+  const dire = (t) => { e.avis = t; if (pp === e) majPartage(); };
+  if (peut([image])) {                                                             // téléphone
+    const tout = cr && peut([image, cr]);
+    if (cr && !tout) telechargerFichier(cr);
+    try { await navigator.share({files: tout ? [image, cr] : [image], title: courte, text: texte}); }
+    catch (err) { if (err && err.name === "AbortError") return; dire("Le partage a échoué (" + (err && err.name || "erreur") + ")."); return; }
+    if (cr && !tout) dire("Fiche envoyée. Ce téléphone refuse le fichier Excel dans ce menu : la copie du Cruncher est dans tes téléchargements, à joindre à la main.");
+    else fermerPartage();
     return;
   }
-  const params = new URLSearchParams({
-    client_id: GIS_CLIENT_ID,
-    redirect_uri: window.location.origin + window.location.pathname,
-    response_type: 'token',
-    scope: 'https://www.googleapis.com/auth/drive.file',
-    include_granted_scopes: 'true'
-  });
-  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
-});
+  telechargerFichier(image); if (cr) telechargerFichier(cr);                         // ordinateur
+  let copie = false; try { if (im.url) { await navigator.clipboard.writeText(texte); copie = true; } } catch (err) {}
+  dire((cr ? "Image et copie du Cruncher téléchargées" : "Image téléchargée") + (copie ? " · lien Centris copié." : "."));
+}
 
-$('btnDriveSync').addEventListener('click', async () => {
-  if (!driveToken) return;
-  updateDriveStatus('syncing', '☁️ Synchronisation en cours…');
-  try {
-    await drivePullAll();
-    await drivePushNow();
-  } catch(e) {
-    updateDriveStatus('error', '⚠️ ' + e.message);
+function afficherJournal() {
+  const runs = (journal && journal.runs) || [];
+  $("journal").innerHTML = runs.length ? runs.slice(0, 20).map((r) =>
+    `<div class="run"><b>Run ${esc(r.run)}</b> · ${dateHeure(r.date)} · ${r.probleme ? "⚠ problème" : esc(r.conclusion || "")}
+     ${r.lien && /^https:\/\/github\.com\//.test(r.lien) ? ` · <a href="${esc(r.lien)}" target="_blank" rel="noopener">GitHub</a>` : ""}
+     <pre>${esc((r.rapport || []).join("\n"))}</pre></div>`).join("") : "Aucun run inscrit au journal.";
+}
+
+// ---------------------------------------------------------------- événements
+$("btn-connexion").addEventListener("click", () => (jeton ? charger() : connecter()));
+$("tri").addEventListener("change", afficherCartes);
+$("secteur").addEventListener("change", afficherCartes);
+// Partager : menu de partage du téléphone (Messenger, WhatsApp, texto…) ; sinon, copie du lien.
+$("btn-partager").addEventListener("click", async () => {
+  const dire = (t) => { $("txt-partager").textContent = t; setTimeout(() => { $("txt-partager").textContent = "Partager"; }, 2500); };
+  if (navigator.share) {
+    try { await navigator.share({title: "Radar immobilier", text: "Aperçu de mon Radar immobilier", url: LIEN_PARTAGE}); }
+    catch (e) { if (e && e.name !== "AbortError") dire("Échec"); }
+    return;
   }
+  try { await navigator.clipboard.writeText(LIEN_PARTAGE); dire("Lien copié"); } catch (e) { dire("Échec"); }
 });
-
-// Intercepter le callback OAuth (hash fragment #access_token=...)
-(function handleOAuthCallback() {
-  const hash = window.location.hash;
-  if (!hash.includes('access_token')) return;
-  const params = new URLSearchParams(hash.slice(1));
-  const token  = params.get('access_token');
-  const expiresIn = parseInt(params.get('expires_in') || '3600');
-  if (token) {
-    setDriveToken({ access_token: token, expires_in: expiresIn });
-    window.history.replaceState(null, '', window.location.pathname);
-    showToast('✓ Google Drive connecté !');
-    initDrive();
-  }
-})();
-
-// Wrapper addProsp / updateProsp / deleteProsp pour déclencher la synchro auto
-const _origAddProsp    = addProsp;
-const _origUpdateProsp = updateProsp;
-const _origDeleteProsp = deleteProsp;
-window.addProsp    = function(entry)    { _origAddProsp(entry);       drivePushDebounced(); };
-window.updateProsp = function(id, chg) { _origUpdateProsp(id, chg);  drivePushDebounced(); };
-window.deleteProsp = function(id)      { _origDeleteProsp(id);       drivePushDebounced(); };
-
-// Patcher btnSave (Réglages) pour aussi pusher la config
-$('btnSave').addEventListener('click', () => {
-  setTimeout(() => { if (driveToken) drivePushDebounced(); }, 100);
+// Partager une fiche : bouton « Partager » de chaque carte -> panneau de partage.
+$("grille").addEventListener("click", (e) => {
+  const b = e.target.closest && e.target.closest("[data-partager]");
+  if (!b) return;
+  const im = ((donnees && donnees.immeubles) || []).find((i) => String(i.id || "") === b.dataset.partager);
+  if (im) ouvrirPartage(im);
 });
+$("pp-envoyer").addEventListener("click", envoyerPartage);
+$("pp-annuler").addEventListener("click", fermerPartage);
+$("pp").addEventListener("cancel", () => { if (pp && pp.urlApercu) URL.revokeObjectURL(pp.urlApercu); pp = null; });
+["pp-notes", "pp-cr"].forEach((id) => $(id).addEventListener("change", () => { if (pp) { pp.avis = ""; majPartage(); } }));
+const basculerJournal = () => { $("panneau-journal").hidden = !$("panneau-journal").hidden; };
+$("etat").addEventListener("click", basculerJournal);
+// La petite carte Google Maps ne se charge qu'à l'ouverture du détail.
+document.addEventListener("toggle", (e) => {
+  const f = e.target.open && e.target.querySelector && e.target.querySelector("iframe[data-src]");
+  if (f) { f.src = f.dataset.src; f.removeAttribute("data-src"); }
+}, true);
 
-// Lancer la synchro au démarrage
-initDrive();
-
-// ═══════════════ FIN DRIVE SYNC ═══════════════
-
+jeton = lireJetonMemorise();
+if (jeton) charger();
+else if (!CLIENT_ID) message("Portail pas encore relié à Google : l'identifiant client OAuth reste à installer (voir la fiche du chantier).");
 </script>
 </body>
 </html>
