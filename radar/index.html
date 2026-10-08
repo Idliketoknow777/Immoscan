@@ -127,7 +127,7 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
  <label id="pp-l-notes" hidden><input type="checkbox" id="pp-notes" checked> Joindre mes notes</label>
  <label id="pp-l-cr"><input type="checkbox" id="pp-cr" checked> Joindre une copie du Cruncher (fichier Excel)</label>
  <div class="st" id="pp-etat" aria-live="polite"></div>
- <div class="act"><button class="btn" id="pp-annuler" type="button">Annuler</button><button class="btn p" id="pp-envoyer" type="button" disabled>Envoyer</button></div>
+ <div class="act"><button class="btn" id="pp-annuler" type="button">Annuler</button><button class="btn" id="pp-telecharger" type="button" hidden>Télécharger le Cruncher</button><button class="btn p" id="pp-envoyer" type="button" disabled>Envoyer</button></div>
 </dialog>
 
 <script>
@@ -668,6 +668,7 @@ function majPartage() {
   }
   if (e.avis) t = e.avis;
   $("pp-etat").textContent = t;
+  $("pp-telecharger").hidden = !e.aTelecharger; $("pp-annuler").textContent = e.aTelecharger ? "Fermer" : "Annuler";
 }
 function ouvrirPartage(im) {
   const cr = im.cruncher || {}, e = pp = {im, note: noteDe(im), plan: null, planFini: false, cruncher: null, crFini: false, crErreur: "", crPossible: !!(cr.drive_id && jeton)};
@@ -707,11 +708,12 @@ async function envoyerPartage() {
   const peut = (f) => { try { return !!(navigator.canShare && navigator.share && navigator.canShare({files: f})); } catch (err) { return false; } };
   const dire = (t) => { e.avis = t; if (pp === e) majPartage(); };
   if (peut([image])) {                                                             // téléphone
+    // Rien avant navigator.share : un téléchargement lancé ici consomme le geste de l'utilisateur et Android
+    // refuse alors le partage (NotAllowedError). Le Cruncher non partageable s'offre après, par son propre bouton.
     const tout = cr && peut([image, cr]);
-    if (cr && !tout) telechargerFichier(cr);
     try { await navigator.share({files: tout ? [image, cr] : [image], title: courte, text: texte}); }
     catch (err) { if (err && err.name === "AbortError") return; dire("Le partage a échoué (" + (err && err.name || "erreur") + ")."); return; }
-    if (cr && !tout) dire("Fiche envoyée. Ce téléphone refuse le fichier Excel dans ce menu : la copie du Cruncher est dans tes téléchargements, à joindre à la main.");
+    if (cr && !tout) { e.aTelecharger = cr; dire("Fiche envoyée. Ce téléphone refuse le fichier Excel dans ce menu : touche « Télécharger le Cruncher », puis joins-le à la main depuis tes téléchargements."); }
     else fermerPartage();
     return;
   }
@@ -754,6 +756,7 @@ $("grille").addEventListener("click", (e) => {
 });
 $("pp-envoyer").addEventListener("click", envoyerPartage);
 $("pp-annuler").addEventListener("click", fermerPartage);
+$("pp-telecharger").addEventListener("click", () => { if (pp && pp.aTelecharger) telechargerFichier(pp.aTelecharger); });
 $("pp").addEventListener("cancel", () => { if (pp && pp.urlApercu) URL.revokeObjectURL(pp.urlApercu); pp = null; });
 ["pp-notes", "pp-cr"].forEach((id) => $(id).addEventListener("change", () => { if (pp) { pp.avis = ""; majPartage(); } }));
 const basculerJournal = () => { $("panneau-journal").hidden = !$("panneau-journal").hidden; };
