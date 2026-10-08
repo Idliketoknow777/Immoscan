@@ -52,6 +52,14 @@ table.abc{width:100%;border-collapse:separate;border-spacing:4px 0;table-layout:
 ul.mf{margin:0;padding-left:18px;font-size:13px}ul.mf li{margin:2px 0}
 .chk{display:inline-block;width:15px;height:15px;border:1.5px solid var(--mute);border-radius:4px;vertical-align:-2px;margin-left:4px;opacity:.6}
 .bas{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.notes{display:flex;flex-direction:column;gap:3px}
+.notes label{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.notes textarea{width:100%;box-sizing:border-box;min-height:36px;resize:none;overflow:hidden;font:inherit;font-size:16px;line-height:1.35;color:var(--ink);background:var(--warnbg);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.notes textarea:focus{outline:2px solid var(--acc);outline-offset:-1px;background:#fff}
+.notes textarea:disabled{background:var(--bg);color:var(--mute)}
+.notes .etat{font-size:11px;color:var(--mute);min-height:14px}.notes .etat.ko{color:var(--neg)}
+.bande-notes{max-width:1200px;margin:12px auto 0;padding:0 16px}
+.bande-notes>div{background:var(--warnbg);color:var(--warn);border-radius:10px;padding:8px 12px;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .btn{text-decoration:none;font-size:13px;padding:7px 12px;border-radius:8px;border:1px solid var(--acc);color:var(--acc);background:#fff;font-family:inherit;cursor:pointer}
 .btn.p{background:var(--acc);color:#fff}.btn[aria-disabled=true]{opacity:.4;pointer-events:none}
 .score{margin-left:auto;font-size:12px;color:var(--mute)}
@@ -96,7 +104,7 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
 <body>
 <header>
  <div class="top">
-  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.1</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.2</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
   <button class="etat" id="etat" type="button" hidden></button>
  </div>
  <div class="barre" id="barre" hidden>
@@ -113,6 +121,7 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
 
 <section class="panneau" id="panneau-journal" hidden><div class="boite" id="journal"></div></section>
 <section class="kpis" id="kpis" hidden></section>
+<section class="bande-notes" id="bande-notes" hidden><div><span id="bande-notes-txt"></span><button class="btn" id="btn-notes" type="button" hidden></button></div></section>
 
 <main id="grille">
  <div class="accueil" id="accueil">
@@ -141,7 +150,9 @@ const CLIENT_ID = "970382559280-ohc88l54o2iigejropfleutrv2qkfjbf.apps.googleuser
 const DOSSIER_DONNEES = "1pW-gd80-oXDWSr4lIMp8Oswp1bcjza1L";
 const NOM_DONNEES = "donnees.json";
 const NOM_JOURNAL = "journal_runs.json";
-const PORTEE = "https://www.googleapis.com/auth/drive.readonly";
+// Lecture du Drive + écriture LIMITÉE aux fichiers créés par le portail (voie étroite, décision du 5 oct. 2026).
+const PORTEE_ECRITURE = "https://www.googleapis.com/auth/drive.file";
+const PORTEE = "https://www.googleapis.com/auth/drive.readonly " + PORTEE_ECRITURE;
 const FORMATS_CONNUS = ["1"];
 // Lien envoyé par le bouton « Partager » : l'aperçu invité (lecture seule, sans connexion Google).
 // Le lien du portail lui-même ne montrerait rien à un invité : les données sont dans le Drive de François.
@@ -184,18 +195,19 @@ function message(txt) { if (!$("message")) return; $("message").textContent = tx
 //  3. au retour après expiration : un essai sans clic, sinon un seul bouton.
 const CLE_JETON = "radar_jeton", CLE_COMPTE = "radar_compte";
 const MARGE_RENOUV = 5 * 60000;
+let droitEcriture = false;
 let expireA = 0, attenteJeton = null, minuterie = null, dernierEssai = 0, chargement = false;
 
 function lireJetonMemorise() {
   try {
     const j = JSON.parse(sessionStorage.getItem(CLE_JETON) || "null");
-    if (j && j.expire > Date.now() + 60000) { expireA = j.expire; return j.valeur; }
+    if (j && j.expire > Date.now() + 60000) { expireA = j.expire; droitEcriture = !!j.ecriture; return j.valeur; }
   } catch (e) {}
   return null;
 }
 function memoriserJeton(valeur, secondes) {
   expireA = Date.now() + secondes * 1000;
-  try { sessionStorage.setItem(CLE_JETON, JSON.stringify({valeur, expire: expireA})); } catch (e) {}
+  try { sessionStorage.setItem(CLE_JETON, JSON.stringify({valeur, expire: expireA, ecriture: droitEcriture})); } catch (e) {}
 }
 function oublierJeton() { jeton = null; expireA = 0; clearTimeout(minuterie); try { sessionStorage.removeItem(CLE_JETON); } catch (e) {} }
 function compteMemorise() { try { return localStorage.getItem(CLE_COMPTE) || ""; } catch (e) { return ""; } }
@@ -224,7 +236,9 @@ function demanderJeton(discret, choisir) {
       callback: (r) => {
         clearTimeout(garde);
         if (r.error || !r.access_token) return ko(Object.assign(new Error("Connexion refusée ou annulée (" + (r.error || "sans jeton") + ")."), {type: "refus"}));
-        jeton = r.access_token; memoriserJeton(jeton, Number(r.expires_in) || 3600); dernierEssai = 0; planifierRenouvellement(); ok(jeton);
+        jeton = r.access_token;
+        try { droitEcriture = google.accounts.oauth2.hasGrantedAllScopes(r, PORTEE_ECRITURE); } catch (e) { droitEcriture = false; }
+        memoriserJeton(jeton, Number(r.expires_in) || 3600); dernierEssai = 0; planifierRenouvellement(); ok(jeton);
         if (tardif && !donnees) charger();
       },
       error_callback: (e) => {
@@ -304,6 +318,7 @@ async function charger() {
     if (!donnees) throw new Error("donnees.json introuvable dans « 03 - Donnees machine ».");
     afficher();
     apprendreCompte();
+    chargerNotes();
   } catch (e) {
     if (e.reconnecter) ecranConnexion("Session expirée. Un toucher suffit pour revenir.");
     else { $("btn-connexion").hidden = false; $("btn-connexion").textContent = "Réessayer"; $("btn-autre-compte").hidden = !compteMemorise(); message(e.message); }
@@ -369,6 +384,7 @@ function afficherCartes() {
   if (!ims.length) { message("Aucun immeuble pour ce filtre."); return; }
   $("accueil").hidden = true;
   grille.insertAdjacentHTML("beforeend", trier(ims).map(carte).join(""));
+  majNotes();
 }
 
 function typo(t) {
@@ -422,6 +438,7 @@ function carte(im) {
    <tr class="ec">${ecCase(ec.A, "Écart A – à négocier")}<td></td>${ecCase(ec.C, "Écart C – potentiel")}</tr>
   </table>
   ${mf.length ? `<ul class="mf">${mf.map((l) => `<li>${l}</li>`).join("")}</ul>` : ""}
+  ${blocNotes(im)}
   <details><summary>Détail</summary>
    <table class="det"><tr><th></th><th>A</th><th>B</th><th>C</th></tr>
     ${ligne("Revenus bruts", "revenus_bruts", n0)}${ligne("Dépenses", "depenses_totales", n0)}
@@ -450,8 +467,188 @@ function carte(im) {
 // La personne qui reçoit n'a besoin d'aucun compte ni d'aucun accès au Drive. Aucun calcul : mêmes chiffres
 // que la carte. Plan : OpenStreetMap (l'adresse de l'immeuble y est envoyée pour la situer).
 const MIME_XLSM = "application/vnd.ms-excel.sheet.macroEnabled.12";
-// Notes de François par immeuble (clé = id). Rempli par l'étape « Notes » du chantier (feuille Radar_Saisies).
+// Notes de François par immeuble (clé = id), lues et écrites dans la feuille Google « Radar_Saisies ».
 let saisies = {};
+
+// ---------------------------------------------------------------- notes (chantier Portail, étape 3)
+// La feuille est CRÉÉE PAR LE PORTAIL à la première note (c'est ce qui lui donne le droit d'y écrire, et dans
+// aucune autre feuille). Elle porte une étiquette invisible (appProperties) : le portail la retrouve même
+// renommée ou déplacée. Colonnes : id | adresse | note | modifie_le | etape_entonnoir (réservée, non affichée).
+// Rien ne se perd : chaque frappe est gardée dans le navigateur (brouillon) tant que Google n'a pas confirmé ;
+// si la note a été changée sur un autre appareil entre-temps, les deux textes sont gardés bout à bout.
+const NOM_SAISIES = "Radar_Saisies", ENTETE_SAISIES = ["id", "adresse", "note", "modifie_le", "etape_entonnoir"];
+const SHEETS = "https://sheets.googleapis.com/v4/spreadsheets/", CLE_BROUILLONS = "radar_brouillons";
+const DELAI_NOTE = 1500;
+// notesEtat : attente | pret | sans-droit | api-fermee | erreur
+let feuilleId = null, notesEtat = "attente", creationFeuille = null, fileNotes = Promise.resolve();
+const noteSale = {}, noteMinut = {}, noteMsg = {};
+
+function brouillons() { try { return JSON.parse(localStorage.getItem(CLE_BROUILLONS) || "{}") || {}; } catch (e) { return {}; } }
+function poserBrouillon(id, note, base) {
+  try { const b = brouillons(); if (note === null) delete b[id]; else b[id] = {note, base: base || ""}; localStorage.setItem(CLE_BROUILLONS, JSON.stringify(b)); } catch (e) {}
+}
+
+async function appelGoogle(url, opts, repris) {
+  if (attenteJeton) await attenteJeton.catch(() => {});
+  const o = opts || {};
+  const r = await fetch(url, {method: o.method || "GET", body: o.body ? JSON.stringify(o.body) : undefined,
+    headers: Object.assign({Authorization: "Bearer " + jeton}, o.body ? {"Content-Type": "application/json"} : {})});
+  if (r.status === 401 && !repris && compteMemorise()) {
+    let ok = false;
+    try { await demanderJeton(true); ok = true; } catch (e) {}
+    if (ok) return appelGoogle(url, opts, true);
+  }
+  if (!r.ok) {
+    let detail = ""; try { detail = JSON.stringify(await r.json()); } catch (e) {}
+    throw Object.assign(new Error("Google a répondu " + r.status + "."), {status: r.status, detail});
+  }
+  return r.json();
+}
+const apiFermee = (e) => e && e.status === 403 && /SERVICE_DISABLED|has not been used|is disabled|accessNotConfigured/i.test(e.detail || "");
+
+async function trouverFeuille() {
+  const q = encodeURIComponent("appProperties has { key='radar' and value='saisies' } and trashed = false");
+  const l = await appelGoogle(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&orderBy=createdTime&pageSize=5`);
+  return l.files && l.files.length ? l.files[0].id : null;
+}
+function assurerFeuille() {
+  if (feuilleId) return Promise.resolve(feuilleId);
+  if (!creationFeuille) {
+    creationFeuille = (async () => {
+      let id = await trouverFeuille();
+      if (!id) {
+        id = (await appelGoogle("https://www.googleapis.com/drive/v3/files?fields=id", {method: "POST",
+          body: {name: NOM_SAISIES, mimeType: "application/vnd.google-apps.spreadsheet", appProperties: {radar: "saisies"}}})).id;
+      }
+      feuilleId = id;
+      return id;
+    })();
+    const fin = () => { creationFeuille = null; };
+    creationFeuille.then(fin, fin);
+  }
+  return creationFeuille;
+}
+async function lireFeuille() {
+  const v = await appelGoogle(SHEETS + feuilleId + "/values/A:E?majorDimension=ROWS");
+  const lignes = v.values || [];
+  if (!lignes.length || String(lignes[0][0] || "") !== "id") {
+    if (!lignes.length) await appelGoogle(SHEETS + feuilleId + "/values/A1:E1?valueInputOption=RAW", {method: "PUT", body: {values: [ENTETE_SAISIES]}});
+  }
+  return lignes;
+}
+const versSaisies = (lignes) => {
+  const s = {};
+  lignes.forEach((l, i) => { const id = String(l[0] || ""); if (id && !(i === 0 && id === "id")) s[id] = {note: String(l[2] || ""), modifie: String(l[3] || ""), etape: String(l[4] || ""), ligne: i + 1}; });
+  return s;
+};
+
+async function chargerNotes() {
+  if (!droitEcriture) { notesEtat = "sans-droit"; majNotes(); return; }
+  try {
+    if (!feuilleId) feuilleId = await trouverFeuille();
+    const lues = feuilleId ? versSaisies(await lireFeuille()) : {};
+    // On ne touche pas à une note en cours de frappe.
+    Object.keys(saisies).forEach((id) => { if (noteSale[id]) lues[id] = Object.assign({}, lues[id], {note: saisies[id].note, base: saisies[id].base, modifie: lues[id] ? lues[id].modifie : ""}); });
+    saisies = lues;
+    notesEtat = "pret";
+    // Brouillons restés dans ce navigateur (page fermée avant la confirmation de Google) : on les reprend.
+    const b = brouillons();
+    Object.keys(b).forEach((id) => {
+      if (noteSale[id]) return;
+      const br = b[id] && typeof b[id] === "object" ? b[id] : {note: String(b[id] || ""), base: ""};
+      if ((saisies[id] ? saisies[id].note : "") === br.note) { poserBrouillon(id, null); return; }
+      saisies[id] = Object.assign({note: "", modifie: "", etape: ""}, saisies[id], {base: br.base, note: br.note});
+      noteSale[id] = true; planifierNote(id, 300);
+    });
+  } catch (e) {
+    if (e.status === 404) feuilleId = null;
+    notesEtat = apiFermee(e) ? "api-fermee" : "erreur";
+  }
+  majNotes();
+}
+
+function planifierNote(id, delai) {
+  clearTimeout(noteMinut[id]);
+  noteMinut[id] = setTimeout(() => enregistrerNote(id), delai === undefined ? DELAI_NOTE : delai);
+}
+function enregistrerNote(id) {
+  clearTimeout(noteMinut[id]); delete noteMinut[id];
+  if (!noteSale[id] || notesEtat !== "pret") return fileNotes;
+  // Une écriture à la fois, dans l'ordre : jamais deux lignes pour le même immeuble.
+  fileNotes = fileNotes.then(() => ecrireNote(id)).catch(() => {});
+  return fileNotes;
+}
+async function ecrireNote(id) {
+  if (!noteSale[id]) return;
+  const s = saisies[id] || (saisies[id] = {note: "", modifie: "", etape: ""});
+  let texte = s.note;
+  noteMsg[id] = {txt: "Enregistrement…"}; majEtatNote(id);
+  try {
+    await assurerFeuille();
+    // On relit la feuille juste avant d'écrire : la ligne se trouve par l'id (la feuille peut avoir été triée),
+    // et on voit si la note a changé ailleurs depuis l'affichage.
+    const lignes = await lireFeuille();
+    let n = -1;
+    for (let i = 0; i < lignes.length; i++) if (String(lignes[i][0] || "") === id) { n = i + 1; break; }
+    const distante = n > 0 ? String(lignes[n - 1][2] || "") : "";
+    const base = s.base !== undefined ? s.base : "";
+    let fusion = false;
+    if (n > 0 && distante !== base && distante.trim() && distante.trim() !== texte.trim() && !texte.includes(distante.trim())) {
+      texte = (texte.trim() ? texte.trim() + "\n\n" : "") + "[Écrit sur un autre appareil]\n" + distante.trim();
+      fusion = true;
+    }
+    const quand = new Date().toISOString();
+    if (n > 0) {
+      await appelGoogle(SHEETS + feuilleId + "/values/" + encodeURIComponent("C" + n + ":D" + n) + "?valueInputOption=RAW", {method: "PUT", body: {values: [[texte, quand]]}});
+    } else {
+      const im = (donnees.immeubles || []).find((x) => x.id === id) || {};
+      await appelGoogle(SHEETS + feuilleId + "/values/A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS", {method: "POST", body: {values: [[id, String(im.adresse || ""), texte, quand, ""]]}});
+    }
+    // La frappe a pu continuer pendant l'écriture : dans ce cas on repart pour un tour.
+    s.base = texte; s.modifie = quand;
+    if (fusion) { s.note = texte; const z = zoneNote(id); if (z) { z.value = texte; ajusterNote(z); } }
+    if (!fusion && s.note !== texte) { planifierNote(id); noteMsg[id] = {txt: "Enregistrement…"}; }
+    else { delete noteSale[id]; poserBrouillon(id, null); noteMsg[id] = {txt: (fusion ? "Réunie avec une note écrite sur un autre appareil · " : "Enregistré · ") + dateHeure(quand)}; }
+  } catch (e) {
+    if (e.status === 404) feuilleId = null;
+    if (apiFermee(e)) { notesEtat = "api-fermee"; majNotes(); }
+    noteMsg[id] = {txt: "Pas encore enregistré (gardé dans ce navigateur). Nouvel essai en cours…", ko: true};
+    planifierNote(id, 15000);
+  }
+  majEtatNote(id);
+}
+
+const zoneNote = (id) => document.querySelector('textarea[data-note="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+function ajusterNote(z) { z.style.height = "auto"; z.style.height = Math.max(36, z.scrollHeight + 2) + "px"; }
+function majEtatNote(id) {
+  const z = zoneNote(id); if (!z) return;
+  const e = z.parentElement.querySelector(".etat"), m = noteMsg[id], s = saisies[id];
+  e.className = "etat" + (m && m.ko ? " ko" : "");
+  e.textContent = m ? m.txt : (s && s.modifie && s.note ? "Enregistré · " + dateHeure(s.modifie) : "");
+}
+function blocNotes(im) {
+  const id = String(im.id || ""); if (!id) return "";
+  return `<div class="notes"><label for="note-${esc(id)}">Mes notes</label><textarea id="note-${esc(id)}" data-note="${esc(id)}" rows="1" placeholder="Écrire une note…" disabled></textarea><div class="etat"></div></div>`;
+}
+// Remet les zones de notes à jour (texte, état, verrou) sans toucher à celle où François est en train d'écrire.
+function majNotes() {
+  const pret = notesEtat === "pret";
+  document.querySelectorAll("textarea[data-note]").forEach((z) => {
+    const id = z.dataset.note, s = saisies[id];
+    if (document.activeElement !== z || !noteSale[id]) { const v = s ? s.note : ""; if (z.value !== v) z.value = v; }
+    z.disabled = !pret;
+    z.placeholder = pret ? "Écrire une note…" : notesEtat === "attente" ? "Lecture des notes…" : "Notes indisponibles pour l'instant";
+    ajusterNote(z); majEtatNote(id);
+  });
+  const txt = {"sans-droit": "Pour écrire des notes, le portail a besoin de ton accord : il pourra écrire seulement dans la feuille qu'il crée lui-même.",
+    "api-fermee": "Notes pas encore activées : l'accès aux feuilles Google (Google Sheets API) reste à activer dans la console Google.",
+    "erreur": "Les notes n'ont pas pu être lues."}[notesEtat];
+  $("bande-notes").hidden = !txt || !donnees;
+  if (txt) {
+    $("bande-notes-txt").textContent = txt;
+    $("btn-notes").hidden = false; $("btn-notes").textContent = notesEtat === "sans-droit" ? "Activer les notes" : "Réessayer";
+  }
+}
 const noteDe = (im) => String((saisies[im.id] && saisies[im.id].note) || "").trim();
 const adresseCourte = (im) => String(im.adresse || "Adresse inconnue").replace(/,\s*Montr[ée]al\s*$/i, "");
 
@@ -733,6 +930,24 @@ function afficherJournal() {
 }
 
 // ---------------------------------------------------------------- événements
+// Notes : chaque frappe est gardée tout de suite dans le navigateur, puis envoyée à Google après une courte pause.
+$("grille").addEventListener("input", (e) => {
+  const z = e.target; if (!z.dataset || z.dataset.note === undefined) return;
+  const id = z.dataset.note, s = saisies[id] || (saisies[id] = {note: "", modifie: "", etape: ""});
+  if (!noteSale[id]) s.base = s.note;
+  s.note = z.value; noteSale[id] = true; poserBrouillon(id, z.value, s.base);
+  noteMsg[id] = {txt: "…"}; majEtatNote(id); ajusterNote(z); planifierNote(id);
+});
+$("grille").addEventListener("focusout", (e) => { const z = e.target; if (z.dataset && z.dataset.note !== undefined && noteSale[z.dataset.note]) enregistrerNote(z.dataset.note); });
+$("btn-notes").addEventListener("click", async () => {
+  if (notesEtat === "sans-droit") { try { await demanderJeton(false); } catch (e) { return; } }
+  notesEtat = "attente"; majNotes(); chargerNotes();
+});
+// Au retour sur la page : on relit les notes (elles ont pu être écrites sur un autre appareil).
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) Object.keys(noteMinut).forEach(enregistrerNote);
+  else if (donnees && jeton && notesEtat === "pret") chargerNotes();
+});
 $("btn-connexion").addEventListener("click", () => (jeton ? charger() : connecter()));
 $("btn-autre-compte").addEventListener("click", () => { oublierJeton(); memoriserCompte(""); connecter(true); });
 document.addEventListener("click", renouveler, true);
