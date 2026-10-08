@@ -21,6 +21,8 @@ body{margin:0;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-seri
 header{background:#fff;border-bottom:1px solid var(--line);padding:12px 16px;position:sticky;top:0;z-index:2}
 .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;max-width:1200px;margin:auto}
 h1{font-size:19px;margin:0}.sub{color:var(--mute);font-size:13px}
+/* Numéro de version : augmenter à CHAQUE publication de cette page (bêta 0.1, 0.2, …). */
+.ver{font-size:11px;font-weight:600;color:var(--mute);border:1px solid var(--line);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:3px;letter-spacing:.02em}
 .etat{font-size:13px;padding:4px 10px;border-radius:99px;background:var(--bg);color:var(--mute);border:0;font-family:inherit;cursor:pointer}
 .etat.ok{background:var(--posbg);color:var(--pos)}.etat.ko{background:var(--negbg);color:var(--neg)}
 .barre{display:flex;gap:8px;flex-wrap:wrap;max-width:1200px;margin:10px auto 0}
@@ -94,7 +96,7 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
 <body>
 <header>
  <div class="top">
-  <div><h1>Radar immobilier<span class="lg"> — Portail</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.1</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
   <button class="etat" id="etat" type="button" hidden></button>
  </div>
  <div class="barre" id="barre" hidden>
@@ -330,7 +332,7 @@ function afficher() {
     et.className = "etat " + (dernier.probleme ? "ko" : "ok");
     et.title = "Ouvrir le journal des runs";
     et.innerHTML = `● <span class="lg">${dernier.probleme ? "Dernier run en problème : " : "Dernier run réussi : "}</span>`
-      + `<span class="ct">${dernier.probleme ? "Problème · " : "Dernier run · "}</span>` + dateHeure(dernier.date);
+      + `<span class="ct">${dernier.probleme ? "Problème · " : "Run · "}</span>` + dateHeure(dernier.date);
   } else if (journal) {
     et.className = "etat"; et.textContent = "Journal des runs";
   }
