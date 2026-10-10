@@ -11,7 +11,11 @@
   Après connexion Google, la page lit donnees.json et journal_runs.json dans le Drive
   (« Radar immobilier / 03 - Donnees machine ») — lecture seule, jamais d'écriture.
   Partage d'une fiche : image dessinée dans la page + copie du Cruncher lue dans le Drive (lecture seule).
-  Aucun calcul : la page affiche ce que le Cruncher et assembler.py ont produit.
+  Aucun calcul, sauf un : quand le prix demandé a changé depuis l'analyse (bloc « marche »), le prix par porte,
+  le MRB et les écarts sont refaits sur le prix courant (fonction vue). Tout le reste vient du Cruncher et
+  d'assembler.py.
+  État des annonces (bloc « marche ») : statut « retiree » = fiche archivée ; « promesse_conditionnelle » =
+  étiquette (à produire par la collecte) ; variation_prix = baisse ou hausse en dollars.
   Contrat de données : CHANTIER_Portail_Premiere_Carte.md §5.
 -->
 <style>
@@ -21,7 +25,7 @@ body{margin:0;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-seri
 header{background:#fff;border-bottom:1px solid var(--line);padding:12px 16px;position:sticky;top:0;z-index:2}
 .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;max-width:1200px;margin:auto}
 h1{font-size:19px;margin:0}.sub{color:var(--mute);font-size:13px}
-/* Numéro de version : augmenter à CHAQUE publication de cette page (bêta 0.1, 0.2, …). */
+/* Numéro de version : augmenter à CHAQUE publication de cette page (bêta 0.21, 0.22, 0.23… : un centième à la fois, il y aura beaucoup d'itérations). */
 .ver{font-size:11px;font-weight:600;color:var(--mute);border:1px solid var(--line);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:3px;letter-spacing:.02em}
 .etat{font-size:13px;padding:4px 10px;border-radius:99px;background:var(--bg);color:var(--mute);border:0;font-family:inherit;cursor:pointer}
 .etat.ok{background:var(--posbg);color:var(--pos)}.etat.ko{background:var(--negbg);color:var(--neg)}
@@ -36,8 +40,32 @@ h1{font-size:19px;margin:0}.sub{color:var(--mute);font-size:13px}
 main{max-width:1200px;margin:16px auto;padding:0 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:14px}
 .carte{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .tag{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.haut{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:30px}.haut .tag{flex:0 0 auto;white-space:nowrap}
+.notes .etat{background:none;padding:0;border-radius:0;cursor:default}
+/* Statut de l'immeuble dans l'entonnoir : une liste déroulante en forme de pastille. */
+.etape{flex:0 1 auto;min-width:0;font:inherit;font-size:12px;font-weight:650;height:30px;padding:0 8px;border-radius:99px;border:1px solid #c3c8d1;background:#fff;color:var(--ink);cursor:pointer;text-overflow:ellipsis}
+.etape.neuf{border-color:var(--acc);background:#eef2fc;color:var(--acc)}.etape.ecarte{color:var(--mute);background:var(--bg)}.etape:disabled{opacity:.55;cursor:default}
+.etiq{display:flex;gap:6px;flex-wrap:wrap}.etiq span{font-size:12px;font-weight:650;padding:3px 9px;border-radius:99px;background:var(--warnbg);color:#7a4f00}
+/* Fiche archivée (annonce retirée de Centris) : contour jaune sur toute la fiche. */
+.carte.arch{border:3px solid #e0a100;background:#fffdf7}
+.pxd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.prix .av{font-size:12.5px;color:var(--mute);text-decoration:line-through;white-space:nowrap}
+.var{flex:0 0 auto;text-align:center;font-size:12px;font-weight:650;line-height:1.25;padding:4px 10px;border-radius:10px;background:var(--posbg);color:var(--pos);white-space:nowrap}
+.var.h{background:var(--warnbg);color:#7a4f00}.var small{display:block;font-size:11px;font-weight:500}
+/* Pastilles du haut : quatre filtres (actives, nouvelles, baisses, archivées). */
+.puce{flex:1 1 0;min-width:0;max-width:170px;min-height:44px;background:#fff;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:12px;line-height:1.2;color:var(--ink);cursor:pointer;padding:4px 6px}
+.puce b{display:block;font-size:17px}.puce.on{border:2px solid var(--acc)}.puce.v b{color:var(--pos)}
+/* Secteurs : liste à cocher (plusieurs secteurs à la fois). */
+.msel{position:relative;flex:1 1 0;min-width:0;max-width:340px}
+.msel>button{width:100%;font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.msel>button[aria-expanded=true]{border-color:var(--acc);outline:1px solid var(--acc)}
+.msel-p{position:absolute;top:calc(100% + 6px);right:0;width:max-content;min-width:100%;max-width:calc(100vw - 24px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(20,25,35,.14);z-index:5;max-height:70vh;overflow:auto}
+.msel-p label{min-height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--line);cursor:pointer;font-size:15px}
+.msel-p label.tous{font-weight:650}.msel-p label span{flex:1 1 auto}.msel-p label small{color:var(--mute);font-size:12px}
+.msel-p input{width:18px;height:18px;flex:0 0 auto;accent-color:var(--acc)}
+.msel-p .fin{display:flex;justify-content:flex-end;padding:8px 14px}.msel-p .fin .btn{min-height:40px;padding:0 18px;font-size:14px}
 .adr{font-weight:650;font-size:16px;margin:0}.meta{color:var(--mute);font-size:13px}
-.prix{display:grid;grid-template-columns:1.25fr 1fr .8fr;gap:6px}
+.prix{display:grid;grid-template-columns:1fr 1fr;gap:6px}.prix>div:first-child{grid-column:1/-1}
 .prix>div{background:var(--bg);border-radius:8px;padding:6px 8px;min-width:0}
 .prix .l{font-size:11px;color:var(--mute)}.prix .v{font-size:17px;font-weight:700;white-space:nowrap}
 .prix .v.s{font-size:15px}.prix .r{font-size:11px;color:var(--mute)}
@@ -88,13 +116,12 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
 .pp .act{display:flex;gap:8px;justify-content:flex-end}
 .pp .btn{padding:9px 16px;font-size:14px}.btn:disabled{opacity:.4;cursor:default}
 [hidden]{display:none!important}
-@media (max-width:420px){.prix{grid-template-columns:1fr 1fr}.prix>div:first-child{grid-column:1/-1}}
 /* Téléphone : en-tête réduit à deux lignes (titre + dernier run, puis tri + secteur côte à côte). */
 @media (max-width:600px){
  header{padding:6px 12px}.top{flex-wrap:nowrap;gap:8px}
  h1{font-size:16px;white-space:nowrap}h1 .lg,.sub,.etat .lg{display:none}.etat .ct{display:inline}
  .etat{font-size:12px;padding:3px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
- .barre{margin-top:6px;gap:6px;flex-wrap:nowrap}.barre select{max-width:none;padding:5px 8px}.partage{padding:5px 10px}.partage span{display:none}
+ .barre{margin-top:6px;gap:6px;flex-wrap:nowrap}.barre select{max-width:none;padding:5px 8px}.msel{max-width:none}.msel>button{padding:5px 8px}.puce{max-width:none}.puce b{font-size:15px}.partage{padding:5px 10px}.partage span{display:none}
  .kpis{margin-top:8px;gap:6px;flex-wrap:nowrap}.kpi.off{display:none}
  .kpi{display:flex;align-items:baseline;gap:6px;padding:4px 10px;min-width:0;flex:1 1 0;white-space:nowrap;overflow:hidden}
  .kpi b{display:inline;font-size:15px}main{margin-top:8px}
@@ -104,17 +131,21 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
 <body>
 <header>
  <div class="top">
-  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.2</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.21</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
   <button class="etat" id="etat" type="button" hidden></button>
  </div>
  <div class="barre" id="barre" hidden>
   <select id="tri" aria-label="Trier">
    <option value="ecartC">Trier : écart C ↓ (potentiel)</option>
    <option value="ecartA">Écart A ↓ (plus petit écart à négocier)</option>
-   <option value="ppp">Prix par porte ↑</option>
+   <option value="ppp">Prix par porte ↑ (le moins cher d'abord)</option>
+   <option value="mrbA">MRB ↑ (actuel, le plus bas d'abord)</option>
+   <option value="mrbC">MRB ↑ (potentiel C)</option>
+   <option value="baisse">Plus grosse baisse de prix</option>
    <option value="recent">Plus récents</option>
+   <option value="retire" hidden>Retirées récemment</option>
   </select>
-  <select id="secteur" aria-label="Secteur"><option value="">Tous les secteurs</option></select>
+  <div class="msel" id="secteur"><button type="button" id="btn-secteur" aria-haspopup="true" aria-expanded="false" aria-controls="liste-secteur">Tous les secteurs</button><div class="msel-p" id="liste-secteur" hidden></div></div>
   <button class="partage" id="btn-partager" type="button" aria-label="Partager l'aperçu du Radar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg><span id="txt-partager">Partager</span></button>
  </div>
 </header>
@@ -333,12 +364,10 @@ function afficher() {
   const fmt = String(donnees.format);
   $("pied").textContent = "Données générées le " + dateHeure(donnees.genere_le) + " (format " + fmt + ")."
     + (FORMATS_CONNUS.includes(fmt) ? "" : " ⚠ Format inconnu de cette page : affichage possiblement incomplet.")
-    + " Écarts = valeur économique − prix demandé, arrondis au millier. MRB = prix demandé ÷ revenus bruts.";
+    + " Écarts = valeur économique − prix demandé, arrondis au millier. MRB = prix demandé ÷ revenus bruts. Après un changement de prix, le prix par porte, le MRB et les écarts sont refaits sur le prix courant.";
 
   // Secteurs (liste déroulante)
-  const sel = $("secteur"), choisi = sel.value;
-  const secteurs = [...new Set(ims.map((i) => i.secteur).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
-  sel.innerHTML = '<option value="">Tous les secteurs</option>' + secteurs.map((s) => `<option${s === choisi ? " selected" : ""}>${esc(s)}</option>`).join("");
+  construireSecteurs(ims);
 
   // État du dernier run
   const et = $("etat"); et.hidden = !journal;
@@ -353,30 +382,97 @@ function afficher() {
   }
   afficherJournal();
 
-  // Bande d'indicateurs
-  const auj = aujourdhui();
-  const nouveaux = ims.filter((i) => i.date_analyse === auj).length;
-  $("kpis").innerHTML = kpi(ims.length, "immeubles au Radar") + kpi(nouveaux, "nouveaux aujourd'hui")
-    + kpi("—", "baisses de prix (à venir)", true) + kpi("—", "score (à venir)", true);
-
   afficherCartes();
 }
-const kpi = (v, l, off) => `<div class="kpi${off ? " off" : ""}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
+// ---- État de l'annonce et chiffres sur le prix courant
+// Le bloc « marche » vient de la collecte : statut (active, retiree, promesse_conditionnelle), prix_actuel,
+// prix_initial, variation_prix (négatif = baisse), historique_prix. Les chiffres de l'analyse datent du jour de
+// l'analyse : si le prix a changé depuis, prix par porte, MRB et écarts sont refaits ici sur le prix courant.
+function vue(im) {
+  const m = im.marche || {}, ve = im.valeur_economique || {}, ec = im.ecart || {}, mrb = im.mrb || {}, P = im.portraits || {};
+  const p0 = im.prix_demande, p = estNb(m.prix_actuel) ? m.prix_actuel : p0, n = im.nb_logements;
+  const change = estNb(p) && p !== p0;
+  const rev = (x) => (P[x] && typeof P[x] === "object" && estNb(P[x].revenus_bruts) && P[x].revenus_bruts > 0) ? P[x].revenus_bruts : null;
+  const mrbSur = (x) => (change && rev(x)) ? p / rev(x) : mrb[x];
+  const ecSur = (x) => (change && estNb(ve[x])) ? ve[x] - p : ec[x];
+  const h = Array.isArray(m.historique_prix) ? m.historique_prix : [];
+  const v = estNb(m.variation_prix) ? m.variation_prix : 0;
+  return {
+    prix: p, change,
+    ppp: (change && estNb(n) && n > 0) ? Math.round(p / n) : im.prix_par_porte_demande,
+    mrbA: mrbSur("A"), mrbC: mrbSur("C"), ecA: ecSur("A"), ecC: ecSur("C"),
+    variation: v, prixInitial: m.prix_initial, dateVariation: v && h.length ? h[h.length - 1].date : null,
+    retiree: m.statut === "retiree", retireeLe: m.retiree_le,
+    promesse: m.statut === "promesse_conditionnelle" || m.promesse_conditionnelle === true,
+  };
+}
+
+// ---- Filtres : quatre pastilles (une seule active à la fois) et les secteurs cochés (aucun = tous).
+const CLE_SECTEURS = "radar_secteurs";
+let filtre = "actives", triAvantArchives = null;
+let secteursChoisis = new Set();
+try { secteursChoisis = new Set(JSON.parse(localStorage.getItem(CLE_SECTEURS) || "[]")); } catch (e) {}
+const FILTRES = [
+  ["actives", "actives", "active", (i, w) => !w.retiree],
+  ["nouvelles", "nouvelles", "nouvelle", (i, w) => !w.retiree && i.date_analyse === aujourdhui()],
+  ["baisses", "baisses", "baisse", (i, w) => !w.retiree && w.variation < 0],
+  ["archives", "archivées", "archivée", (i, w) => w.retiree],
+];
+const duSecteur = (i) => !secteursChoisis.size || secteursChoisis.has(i.secteur);
+
+function construireSecteurs(ims) {
+  const compte = {};
+  ims.forEach((i) => { if (i.secteur) compte[i.secteur] = (compte[i.secteur] || 0) + 1; });
+  const noms = Object.keys(compte).sort((a, b) => a.localeCompare(b, "fr"));
+  // Un secteur retenu qui n'existe plus dans les données ne doit pas vider la liste.
+  secteursChoisis = new Set([...secteursChoisis].filter((s) => compte[s]));
+  $("liste-secteur").innerHTML = `<label class="tous"><input type="checkbox" data-secteur=""><span>Tous les secteurs</span><small>${ims.length}</small></label>`
+    + noms.map((s) => `<label><input type="checkbox" data-secteur="${esc(s)}"><span>${esc(s)}</span><small>${compte[s]}</small></label>`).join("")
+    + '<div class="fin"><button class="btn p" type="button" id="fermer-secteur">Appliquer</button></div>';
+  majSecteurs();
+}
+function majSecteurs() {
+  const n = secteursChoisis.size;
+  $("btn-secteur").textContent = (n === 0 ? "Tous les secteurs" : n === 1 ? [...secteursChoisis][0] : n + " secteurs") + " ▾";
+  $("liste-secteur").querySelectorAll("input[data-secteur]").forEach((c) => { c.checked = c.dataset.secteur ? secteursChoisis.has(c.dataset.secteur) : n === 0; });
+  try { localStorage.setItem(CLE_SECTEURS, JSON.stringify([...secteursChoisis])); } catch (e) {}
+}
+function ouvrirSecteurs(ouvert) {
+  $("liste-secteur").hidden = !ouvert; $("btn-secteur").setAttribute("aria-expanded", ouvert ? "true" : "false");
+}
+function choisirFiltre(f) {
+  const tri = $("tri"), optRetire = tri.querySelector('option[value="retire"]');
+  if (f === "archives" && filtre !== "archives") { triAvantArchives = tri.value; optRetire.hidden = false; tri.value = "retire"; }
+  if (f !== "archives" && filtre === "archives") { optRetire.hidden = true; tri.value = triAvantArchives || "ecartC"; }
+  filtre = f;
+  afficherCartes();
+}
 
 function trier(ims) {
   const t = $("tri").value, bas = (v) => (estNb(v) ? 0 : 1);
+  const W = new Map(ims.map((i) => [i, vue(i)])), w = (i) => W.get(i);
   const recent = (a, b) => String(b.date_analyse || "").localeCompare(String(a.date_analyse || ""));
+  const croissant = (cle) => (a, b) => bas(w(a)[cle]) - bas(w(b)[cle]) || (w(a)[cle] ?? 0) - (w(b)[cle] ?? 0) || recent(a, b);
+  const decroissant = (cle) => (a, b) => bas(w(a)[cle]) - bas(w(b)[cle]) || (w(b)[cle] ?? 0) - (w(a)[cle] ?? 0) || recent(a, b);
   const cles = {
-    ecartC: (a, b) => bas(a.ecart?.C) - bas(b.ecart?.C) || (b.ecart?.C ?? 0) - (a.ecart?.C ?? 0) || recent(a, b),
-    ecartA: (a, b) => bas(a.ecart?.A) - bas(b.ecart?.A) || (b.ecart?.A ?? 0) - (a.ecart?.A ?? 0) || recent(a, b),
-    ppp: (a, b) => bas(a.prix_par_porte_demande) - bas(b.prix_par_porte_demande) || (a.prix_par_porte_demande ?? 0) - (b.prix_par_porte_demande ?? 0),
+    ecartC: decroissant("ecC"), ecartA: decroissant("ecA"),
+    ppp: croissant("ppp"), mrbA: croissant("mrbA"), mrbC: croissant("mrbC"),
+    baisse: (a, b) => w(a).variation - w(b).variation || recent(a, b),
+    retire: (a, b) => String(w(b).retireeLe || "").localeCompare(String(w(a).retireeLe || "")) || recent(a, b),
     recent,
   };
   return [...ims].sort(cles[t] || cles.ecartC);
 }
 
 function afficherCartes() {
-  const ims = (donnees.immeubles || []).filter((i) => !$("secteur").value || i.secteur === $("secteur").value);
+  const duCoin = (donnees.immeubles || []).filter(duSecteur).map((i) => [i, vue(i)]);
+  // Pastilles : le compte de chaque filtre, pour les secteurs cochés.
+  $("kpis").innerHTML = FILTRES.map(([cle, pluriel, singulier, test]) => {
+    const n = duCoin.filter(([i, w]) => test(i, w)).length;
+    return `<button class="puce${cle === filtre ? " on" : ""}${cle === "baisses" && n ? " v" : ""}" type="button" data-filtre="${cle}" aria-pressed="${cle === filtre}"><b>${n}</b>${n > 1 ? pluriel : singulier}</button>`;
+  }).join("");
+  const test = (FILTRES.find((f) => f[0] === filtre) || FILTRES[0])[3];
+  const ims = duCoin.filter(([i, w]) => test(i, w)).map(([i]) => i);
   const libTri = $("tri").selectedOptions[0].textContent.replace(/^Trier : /, "");
   $("sous-titre").textContent = ims.length + " immeuble" + (ims.length > 1 ? "s" : "") + " · trié par " + libTri;
   const grille = $("grille");
@@ -401,12 +497,18 @@ function ligneLoyer(lo) {
 }
 
 function carte(im) {
-  const ve = im.valeur_economique || {}, ec = im.ecart || {}, mrb = im.mrb || {};
+  const w = vue(im), ve = im.valeur_economique || {}, ec = {A: w.ecA, C: w.ecC}, mrb = {A: w.mrbA, C: w.mrbC};
   const adresse = String(im.adresse || "Adresse inconnue");
   const courte = adresse.replace(/,\s*Montr[ée]al\s*$/i, "");
   const q = encodeURIComponent(adresse);
   const tag = [im.provenance === "centris" && im.no_inscription ? "Centris " + esc(im.no_inscription) : esc(im.id || ""),
-               "analysé le " + dateCourte(im.date_analyse)].filter(Boolean).join(" · ");
+               dateCourte(im.date_analyse)].filter(Boolean).join(" · ");
+  // État de l'annonce : étiquettes, et variation de prix logée dans la case du prix demandé.
+  const etiq = [w.retiree ? "Retirée de Centris" + (w.retireeLe ? " le " + dateCourte(w.retireeLe) : "") : "",
+                w.promesse ? "Promesse d'achat conditionnelle" : ""].filter(Boolean);
+  const varPrix = w.variation
+    ? `<div class="var${w.variation > 0 ? " h" : ""}">${w.variation < 0 ? "Baisse" : "Hausse"} de ${$$(Math.abs(w.variation))}${w.dateVariation ? `<small>${dateCourte(w.dateVariation)}</small>` : ""}</div>` : "";
+  const avant = w.variation && estNb(w.prixInitial) && w.prixInitial !== w.prix ? `<div class="av">${$$(w.prixInitial)}</div>` : "";
 
   // Microfiche : la ligne du loyer est rendue depuis le champ structuré (crochet ✓), le reste tel quel.
   const loyer = ligneLoyer(im.loyer_moyen_porte);
@@ -424,12 +526,13 @@ function carte(im) {
   const cr = im.cruncher || {};
   const lienCr = cr.drive_id ? `https://drive.google.com/file/d/${encodeURIComponent(cr.drive_id)}/view` : null;
 
-  return `<article class="carte">
-  <div class="tag">${tag}</div>
+  return `<article class="carte${w.retiree ? " arch" : ""}">
+  <div class="haut"><div class="tag" title="Date de l'analyse">${tag}</div>${blocEtape(im)}</div>
+  ${etiq.length ? `<div class="etiq">${etiq.map((e) => `<span>${esc(e)}</span>`).join("")}</div>` : ""}
   <div><p class="adr">${esc(courte)}</p><div class="meta">${esc(im.secteur || "Secteur inconnu")} · ${estNb(im.nb_logements) ? im.nb_logements + " portes" : "portes ?"}${typo(im.typologie)}</div></div>
   <div class="prix">
-   <div><div class="l">Prix demandé</div><div class="v">${$$(im.prix_demande)}</div></div>
-   <div><div class="l">Prix par porte</div><div class="v s">${$$(im.prix_par_porte_demande)}</div><div class="r">secteur : à venir</div></div>
+   <div class="pxd"><div><div class="l">${w.retiree ? "Dernier prix demandé" : "Prix demandé"}</div><div class="v">${$$(w.prix)}</div>${avant}</div>${varPrix}</div>
+   <div><div class="l">Prix par porte</div><div class="v s">${$$(w.ppp)}</div><div class="r">secteur : à venir</div></div>
    <div><div class="l">MRB</div><div class="v s">${estNb(mrb.A) ? nb1.format(mrb.A) : "—"}</div>${estNb(mrb.C) ? `<div class="r">potentiel C : ${nb1.format(mrb.C)}</div>` : ""}</div>
   </div>
   <table class="abc">
@@ -451,7 +554,7 @@ function carte(im) {
    ${cr.nom ? `<p style="color:var(--mute)">Cruncher : ${esc(cr.nom)}</p>` : ""}
   </details>
   <div class="bas">
-   <a class="btn" target="_blank" rel="noopener" ${im.url ? `href="${esc(im.url)}"` : 'aria-disabled="true"'}>Centris</a>
+   <a class="btn" target="_blank" rel="noopener" ${im.url ? `href="${esc(im.url)}"` : 'aria-disabled="true"'}${w.retiree ? ' title="Annonce retirée : la fiche Centris peut ne plus exister"' : ""}>Centris</a>
    <a class="btn p" target="_blank" rel="noopener" ${lienCr ? `href="${lienCr}"` : 'aria-disabled="true" title="Lien Drive pas encore connu"'}>Cruncher</a>
    <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">Carte</a>
    <button class="btn" type="button" data-partager="${esc(im.id || "")}" title="Envoyer cette fiche (image, lien Centris, copie du Cruncher)">Partager</button>
@@ -549,6 +652,8 @@ async function chargerNotes() {
     const lues = feuilleId ? versSaisies(await lireFeuille()) : {};
     // On ne touche pas à une note en cours de frappe.
     Object.keys(saisies).forEach((id) => { if (noteSale[id]) lues[id] = Object.assign({}, lues[id], {note: saisies[id].note, base: saisies[id].base, modifie: lues[id] ? lues[id].modifie : ""}); });
+    // Ni à un statut choisi qui n'est pas encore confirmé par Google.
+    Object.keys(etapeSale).forEach((id) => { lues[id] = Object.assign({note: "", modifie: "", etape: ""}, lues[id], {etape: saisies[id] ? saisies[id].etape : ""}); });
     saisies = lues;
     notesEtat = "pret";
     // Brouillons restés dans ce navigateur (page fermée avant la confirmation de Google) : on les reprend.
@@ -618,6 +723,57 @@ async function ecrireNote(id) {
   majEtatNote(id);
 }
 
+// ---- Statut de l'immeuble dans l'entonnoir (colonne « etape_entonnoir » de la même feuille).
+// La liste se change ici, à un seul endroit. Le premier (vide dans la feuille) est l'état de départ.
+// Un statut déjà enregistré qui ne serait plus dans la liste reste affiché tel quel.
+// LISTE PROVISOIRE (9 oct. 2026) : François ne l'aime pas telle quelle ; elle est là pour voir la pastille
+// fonctionner. À REVOIR ET COMPLÉTER AVEC LUI APRÈS LA V1 (voir le plan directeur, §8, CRM / entonnoir).
+const ETAPES = ["Nouveau", "Vu", "À analyser", "Chiffres à confirmer", "Questions au courtier", "Offre à déposer", "PA acceptée", "Écarté"];
+const etapeSale = {};
+function blocEtape(im) {
+  const id = String(im.id || ""); if (!id) return "";
+  return `<select class="etape neuf" data-etape="${esc(id)}" aria-label="Statut de l'immeuble" disabled>`
+    + ETAPES.map((e, i) => `<option value="${i ? esc(e) : ""}">${esc(e)}</option>`).join("") + "</select>";
+}
+function majEtapes() {
+  const pret = notesEtat === "pret";
+  document.querySelectorAll("select[data-etape]").forEach((sel) => {
+    const s = saisies[sel.dataset.etape], v = s && s.etape && s.etape !== ETAPES[0] ? s.etape : "";
+    if (v && ![...sel.options].some((o) => o.value === v)) sel.add(new Option(v, v));
+    if (sel.value !== v) sel.value = v;
+    sel.disabled = !pret;
+    sel.className = "etape" + (v === "" ? " neuf" : v === "Écarté" ? " ecarte" : "");
+    sel.title = pret ? "Changer le statut" : "Statut indisponible pour l'instant";
+  });
+}
+function choisirEtape(id, v) {
+  const s = saisies[id] || (saisies[id] = {note: "", modifie: "", etape: ""});
+  s.etape = v; etapeSale[id] = true; majEtapes();
+  fileNotes = fileNotes.then(() => ecrireEtape(id)).catch(() => {});
+}
+async function ecrireEtape(id) {
+  if (!etapeSale[id] || notesEtat !== "pret") return;
+  const v = saisies[id].etape;
+  try {
+    await assurerFeuille();
+    const lignes = await lireFeuille();
+    let n = -1;
+    for (let i = 0; i < lignes.length; i++) if (String(lignes[i][0] || "") === id) { n = i + 1; break; }
+    if (n > 0) {
+      await appelGoogle(SHEETS + feuilleId + "/values/" + encodeURIComponent("E" + n) + "?valueInputOption=RAW", {method: "PUT", body: {values: [[v]]}});
+    } else {
+      const im = (donnees.immeubles || []).find((x) => x.id === id) || {};
+      await appelGoogle(SHEETS + feuilleId + "/values/A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS", {method: "POST", body: {values: [[id, String(im.adresse || ""), "", "", v]]}});
+    }
+    if (saisies[id] && saisies[id].etape !== v) fileNotes = fileNotes.then(() => ecrireEtape(id)).catch(() => {});
+    else delete etapeSale[id];
+  } catch (e) {
+    if (e.status === 404) feuilleId = null;
+    if (apiFermee(e)) { notesEtat = "api-fermee"; majNotes(); }
+    setTimeout(() => { fileNotes = fileNotes.then(() => ecrireEtape(id)).catch(() => {}); }, 15000);
+  }
+}
+
 const zoneNote = (id) => document.querySelector('textarea[data-note="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
 function ajusterNote(z) { z.style.height = "auto"; z.style.height = Math.max(36, z.scrollHeight + 2) + "px"; }
 function majEtatNote(id) {
@@ -640,6 +796,7 @@ function majNotes() {
     z.placeholder = pret ? "Écrire une note…" : notesEtat === "attente" ? "Lecture des notes…" : "Notes indisponibles pour l'instant";
     ajusterNote(z); majEtatNote(id);
   });
+  majEtapes();
   const txt = {"sans-droit": "Pour écrire des notes, le portail a besoin de ton accord : il pourra écrire seulement dans la feuille qu'il crée lui-même.",
     "api-fermee": "Notes pas encore activées : l'accès aux feuilles Google (Google Sheets API) reste à activer dans la console Google.",
     "erreur": "Les notes n'ont pas pu être lues."}[notesEtat];
@@ -719,7 +876,7 @@ function dessinerFiche(ctx, im, L, opts) {
     return y;
   };
   const titre = (txt, y) => { ecrire(txt, P, y, 10.5, 650, C.mute); return y + 16; };
-  const ve = im.valeur_economique || {}, ec = im.ecart || {}, mrb = im.mrb || {}, lo = im.loyer_moyen_porte;
+  const w = vue(im), ve = im.valeur_economique || {}, ec = {A: w.ecA, C: w.ecC}, mrb = {A: w.mrbA, C: w.mrbC}, lo = im.loyer_moyen_porte;
   ctx.textBaseline = "alphabetic";
   let y = P + 12;
 
@@ -736,8 +893,8 @@ function dessinerFiche(ctx, im, L, opts) {
 
   // Prix demandé, prix par porte, MRB
   const esp = 8, l1 = (larg - 2 * esp) * 0.41, l2 = (larg - 2 * esp) * 0.33, l3 = larg - 2 * esp - l1 - l2, h = 66;
-  [[P, l1, "Prix demandé", $$(im.prix_demande), 21, ""],
-   [P + l1 + esp, l2, "Prix par porte", $$(im.prix_par_porte_demande), 18, ""],
+  [[P, l1, "Prix demandé", $$(w.prix), 21, ""],
+   [P + l1 + esp, l2, "Prix par porte", $$(w.ppp), 18, ""],
    [P + l1 + l2 + 2 * esp, l3, "MRB", estNb(mrb.A) ? nb1.format(mrb.A) : "—", 18, estNb(mrb.C) ? "potentiel : " + nb1.format(mrb.C) : ""],
   ].forEach(([x, w, lib, val, taille, note]) => {
     boite(x, y, w, h, C.bg);
@@ -953,7 +1110,18 @@ $("btn-autre-compte").addEventListener("click", () => { oublierJeton(); memorise
 document.addEventListener("click", renouveler, true);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) planifierRenouvellement(); });
 $("tri").addEventListener("change", afficherCartes);
-$("secteur").addEventListener("change", afficherCartes);
+$("kpis").addEventListener("click", (e) => { const b = e.target.closest && e.target.closest("[data-filtre]"); if (b) choisirFiltre(b.dataset.filtre); });
+$("btn-secteur").addEventListener("click", () => ouvrirSecteurs($("liste-secteur").hidden));
+$("liste-secteur").addEventListener("change", (e) => {
+  const c = e.target; if (!c.dataset || c.dataset.secteur === undefined) return;
+  if (!c.dataset.secteur) secteursChoisis.clear();
+  else if (c.checked) secteursChoisis.add(c.dataset.secteur); else secteursChoisis.delete(c.dataset.secteur);
+  majSecteurs(); afficherCartes();
+});
+$("liste-secteur").addEventListener("click", (e) => { if (e.target.id === "fermer-secteur") ouvrirSecteurs(false); });
+document.addEventListener("click", (e) => { if (!$("liste-secteur").hidden && !e.target.closest("#secteur")) ouvrirSecteurs(false); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("liste-secteur").hidden) { ouvrirSecteurs(false); $("btn-secteur").focus(); } });
+$("grille").addEventListener("change", (e) => { const s = e.target; if (s.dataset && s.dataset.etape !== undefined && s.matches("select")) choisirEtape(s.dataset.etape, s.value); });
 // Partager : menu de partage du téléphone (Messenger, WhatsApp, texto…) ; sinon, copie du lien.
 $("btn-partager").addEventListener("click", async () => {
   const dire = (t) => { $("txt-partager").textContent = t; setTimeout(() => { $("txt-partager").textContent = "Partager"; }, 2500); };
