@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
+<meta property="og:title" content="Radar immobilier — fiche partagée">
+<meta property="og:description" content="Fiches d'immeubles partagées par François. Ouvre le lien pour les voir, sans compte.">
 <title>Radar immobilier — Portail</title>
 <!--
   Portail du Radar immobilier — page /radar/ (module M7, format 1 de donnees.json).
   Coquille publique (décision 1-C, 29 sept. 2026) : AUCUNE donnée dans ce fichier.
   Après connexion Google, la page lit donnees.json et journal_runs.json dans le Drive
   (« Radar immobilier / 03 - Donnees machine ») — lecture seule, jamais d'écriture.
-  Partage d'une fiche : image dessinée dans la page + copie du Cruncher lue dans le Drive (lecture seule).
   Aucun calcul, sauf un : quand le prix demandé a changé depuis l'analyse (bloc « marche »), le prix par porte,
   le MRB et les écarts sont refaits sur le prix courant (fonction vue). Tout le reste vient du Cruncher et
   d'assembler.py.
@@ -23,6 +24,9 @@
   Mise à jour automatique (bêta 0.23) : au retour sur l'onglet, la page compare son numéro de version (étiquette
   « bêta X.YY ») à celui de la page en ligne et se recharge seule s'il a changé, jamais pendant une frappe.
   Le numéro DOIT donc changer à chaque publication.
+  Partage par lien (bêta 0.24, CHANTIER_Partage.md) : « Partager » inscrit une ligne dans l'onglet « Partages » de
+  Radar_Saisies et envoie UN lien …/radar/?p=CODE. Avec ce code, la page passe en MODE INVITÉ : sans connexion Google,
+  elle demande les fiches au script Google « Radar_Partage » (URL_SCRIPT_PARTAGE), en lecture seule.
   Contrat de données : CHANTIER_Portail_Premiere_Carte.md §5.
 -->
 <style>
@@ -124,6 +128,26 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
 .pp .act{display:flex;gap:8px;justify-content:flex-end}
 .pp .btn{padding:9px 16px;font-size:14px}.btn:disabled{opacity:.4;cursor:default}
 [hidden]{display:none!important}
+/* Partage par lien (bêta 0.24) */
+.pp .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-bottom:10px}
+.pp .seg button{font:inherit;font-size:14px;padding:9px;border:0;background:#fff;color:var(--ink);cursor:pointer}
+.pp .seg button[aria-pressed=true]{background:#eef2fc;color:var(--acc);font-weight:650}
+.pp .seg button[hidden]+button{grid-column:1/-1}
+.pp-fiche{background:var(--bg);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column}
+.pp-fiche small,.pp-liste small{display:block;color:var(--mute);font-size:12px}
+.pp-outils{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mute)}.pp-outils span{flex:1 1 auto}
+.pp .pp-liste{max-height:38vh;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:4px}
+.pp .pp-liste label{margin:0;padding:8px 10px;border-bottom:1px solid var(--line);align-items:flex-start}
+.pp .pp-liste label:last-child{border:0}
+.pp label small{display:block;color:var(--mute);font-size:12px}
+.pp .champ{flex-direction:column;align-items:stretch;gap:4px;font-size:13px;color:var(--mute)}
+.pp .champ input{font:inherit;font-size:16px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;color:var(--ink)}
+.pp .lien{font-size:12px;word-break:break-all;background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:6px 8px;color:var(--mute);user-select:all;margin-bottom:10px}
+/* Mode invité */
+h1 .inv{font-size:11px;font-weight:600;color:var(--acc);margin-left:4px;vertical-align:3px}
+.invite #btn-partager{display:none!important}
+.note-inv{background:var(--warnbg);border-radius:8px;padding:7px 9px;font-size:14px;white-space:pre-wrap}
+.note-inv b{display:block;font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em;font-weight:500}
 /* Téléphone : en-tête réduit à deux lignes (titre + dernier run, puis tri + secteur côte à côte). */
 @media (max-width:600px){
  header{padding:6px 12px}.top{flex-wrap:nowrap;gap:8px}
@@ -139,7 +163,7 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
 <body>
 <header>
  <div class="top">
-  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.23</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.24</span><span class="inv" hidden>(invité)</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
   <button class="etat" id="etat" type="button" hidden></button>
  </div>
  <div class="barre" id="barre" hidden>
@@ -173,11 +197,18 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
 
 <dialog class="pp" id="pp" aria-labelledby="pp-titre">
  <h2 id="pp-titre">Partager</h2>
- <div class="ap"><img id="pp-apercu" alt="Aperçu de la fiche qui sera envoyée"></div>
- <label id="pp-l-notes" hidden><input type="checkbox" id="pp-notes" checked> Joindre mes notes</label>
- <label id="pp-l-cr"><input type="checkbox" id="pp-cr" checked> Joindre une copie du Cruncher (fichier Excel)</label>
+ <div class="seg" role="group" aria-label="Quoi partager"><button type="button" id="pp-m-un" aria-pressed="true">Cette fiche</button><button type="button" id="pp-m-sel" aria-pressed="false">Une sélection</button></div>
+ <div class="pp-fiche" id="pp-un"></div>
+ <div id="pp-sel" hidden>
+  <div class="pp-outils"><span id="pp-compte"></span><button class="lienb" type="button" id="pp-tout">Tout cocher</button><button class="lienb" type="button" id="pp-rien">Aucune</button></div>
+  <div class="pp-liste" id="pp-liste"></div>
+ </div>
+ <label><input type="checkbox" id="pp-cr" checked><span>Joindre une copie du Cruncher<small>Copie figée au moment de l'envoi. Ton original ne bouge pas.</small></span></label>
+ <label id="pp-l-notes" hidden><input type="checkbox" id="pp-notes" checked><span>Joindre mes notes</span></label>
+ <label class="champ" for="pp-qui">Pour qui ? (pour t'y retrouver)<input type="text" id="pp-qui" maxlength="80" placeholder="ex. Marc — club d'investisseurs"></label>
  <div class="st" id="pp-etat" aria-live="polite"></div>
- <div class="act"><button class="btn" id="pp-annuler" type="button">Annuler</button><button class="btn" id="pp-telecharger" type="button" hidden>Télécharger le Cruncher</button><button class="btn p" id="pp-envoyer" type="button" disabled>Envoyer</button></div>
+ <div class="lien" id="pp-lien" hidden></div>
+ <div class="act"><button class="btn" id="pp-annuler" type="button">Annuler</button><button class="btn" id="pp-reessayer" type="button" hidden>Réessayer</button><button class="btn p" id="pp-envoyer" type="button" disabled>Envoyer…</button></div>
 </dialog>
 
 <script>
@@ -195,7 +226,11 @@ const PORTEE = "https://www.googleapis.com/auth/drive.readonly " + PORTEE_ECRITU
 const FORMATS_CONNUS = ["1"];
 // Lien envoyé par le bouton « Partager » : l'aperçu invité (lecture seule, sans connexion Google).
 // Le lien du portail lui-même ne montrerait rien à un invité : les données sont dans le Drive de François.
-const LIEN_PARTAGE = "https://claude.ai/artifact/UuhXLBazej9v1EqTG7snNk";
+const LIEN_PARTAGE = "https://claude.ai/artifact/UuhXLBazej9v1EqTG7snNk";   // repli tant que le script n'est pas publié
+// Adresse « /exec » du script Google Radar_Partage (application Web publiée par François). Vide = partage pas encore branché.
+const URL_SCRIPT_PARTAGE = "";
+// Mode invité : le lien porte un code de partage (…/radar/?p=CODE).
+const INVITE = (new URLSearchParams(location.search).get("p") || "").replace(/[^A-Za-z0-9]/g, "");
 
 // ---------------------------------------------------------------- état
 let jeton = null, donnees = null, journal = null, clientJeton = null;
@@ -372,7 +407,7 @@ function afficher() {
   const fmt = String(donnees.format);
   $("pied").textContent = "Données générées le " + dateHeure(donnees.genere_le) + " (format " + fmt + ")."
     + (FORMATS_CONNUS.includes(fmt) ? "" : " ⚠ Format inconnu de cette page : affichage possiblement incomplet.")
-    + " Écarts = valeur économique − prix demandé, arrondis au millier. MRB = prix demandé ÷ revenus bruts. Après un changement de prix, le prix par porte, le MRB et les écarts sont refaits sur le prix courant.";
+    + (INVITE ? " Lecture seule." : "") + " Écarts = valeur économique − prix demandé, arrondis au millier. MRB = prix demandé ÷ revenus bruts. Après un changement de prix, le prix par porte, le MRB et les écarts sont refaits sur le prix courant.";
 
   // Secteurs (liste déroulante)
   construireSecteurs(ims);
@@ -421,7 +456,7 @@ function vue(im) {
 const CLE_SECTEURS = "radar_secteurs";
 let filtre = "actives", triAvantArchives = null;
 let secteursChoisis = new Set();
-try { secteursChoisis = new Set(JSON.parse(localStorage.getItem(CLE_SECTEURS) || "[]")); } catch (e) {}
+if (!INVITE) { try { secteursChoisis = new Set(JSON.parse(localStorage.getItem(CLE_SECTEURS) || "[]")); } catch (e) {} }
 const FILTRES = [
   ["actives", "actives", "active", (i, w) => !w.retiree],
   ["nouvelles", "nouvelles", "nouvelle", (i, w) => !w.retiree && i.date_analyse === aujourdhui()],
@@ -445,7 +480,7 @@ function majSecteurs() {
   const n = secteursChoisis.size;
   $("btn-secteur").textContent = (n === 0 ? "Tous les secteurs" : n === 1 ? [...secteursChoisis][0] : n + " secteurs") + " ▾";
   $("liste-secteur").querySelectorAll("input[data-secteur]").forEach((c) => { c.checked = c.dataset.secteur ? secteursChoisis.has(c.dataset.secteur) : n === 0; });
-  try { localStorage.setItem(CLE_SECTEURS, JSON.stringify([...secteursChoisis])); } catch (e) {}
+  if (!INVITE) { try { localStorage.setItem(CLE_SECTEURS, JSON.stringify([...secteursChoisis])); } catch (e) {} }
 }
 function ouvrirSecteurs(ouvert) {
   $("liste-secteur").hidden = !ouvert; $("btn-secteur").setAttribute("aria-expanded", ouvert ? "true" : "false");
@@ -484,7 +519,7 @@ function afficherCartes() {
   const test = (FILTRES.find((f) => f[0] === filtre) || FILTRES[0])[3];
   const ims = duCoin.filter(([i, w]) => test(i, w)).map(([i]) => i);
   const libTri = $("tri").selectedOptions[0].textContent.replace(/^Trier : /, "");
-  $("sous-titre").textContent = ims.length + " immeuble" + (ims.length > 1 ? "s" : "") + " · trié par " + libTri;
+  $("sous-titre").textContent = (INVITE ? "Partagé par François · " : "") + ims.length + " immeuble" + (ims.length > 1 ? "s" : "") + " · trié par " + libTri;
   const grille = $("grille");
   grille.querySelectorAll(".carte").forEach((c) => c.remove());
   if (!ims.length) { message("Aucun immeuble pour ce filtre."); return; }
@@ -537,7 +572,7 @@ function carte(im) {
   const lienCr = cr.drive_id ? `https://drive.google.com/file/d/${encodeURIComponent(cr.drive_id)}/view` : null;
 
   return `<article class="carte${w.retiree ? " arch" : ""}">
-  <div class="haut"><div class="tag" title="Date de l'analyse">${tag}</div>${blocEtape(im)}</div>
+  <div class="haut"><div class="tag" title="Date de l'analyse">${tag}</div>${INVITE ? "" : blocEtape(im)}</div>
   ${etiq.length ? `<div class="etiq">${etiq.map((e) => `<span>${esc(e)}</span>`).join("")}</div>` : ""}
   <div><p class="adr">${esc(courte)}</p><div class="meta">${esc(im.secteur || "Secteur inconnu")} · ${estNb(im.nb_logements) ? im.nb_logements + " portes" : "portes ?"}${typo(im.typologie)}</div></div>
   <div class="prix">
@@ -548,10 +583,10 @@ function carte(im) {
   <table class="abc">
    <tr><th>A · actuel</th><th>B · converti</th><th>C · final</th></tr>
    <tr class="val"><td>${$mille(ve.A)}</td><td>${$mille(ve.B)}</td><td>${$mille(ve.C)}</td></tr>
-   <tr class="ec">${ecCase(ec.A, "Écart A – à négocier")}<td></td>${ecCase(ec.C, "Écart C – potentiel")}</tr>
+   <tr class="ec">${ecCase(ec.A, INVITE ? "Écart A avec le prix demandé" : "Écart A – à négocier")}<td></td>${ecCase(ec.C, INVITE ? "Écart C avec le prix demandé" : "Écart C – potentiel")}</tr>
   </table>
   ${mf.length ? `<ul class="mf">${mf.map((l) => `<li>${l}</li>`).join("")}</ul>` : ""}
-  ${blocNotes(im)}
+  ${INVITE ? (im.note_partagee ? `<div class="note-inv"><b>Note de François</b>${esc(im.note_partagee)}</div>` : "") : blocNotes(im)}
   <details><summary>Détail</summary>
    <table class="det"><tr><th></th><th>A</th><th>B</th><th>C</th></tr>
     ${ligne("Revenus bruts", "revenus_bruts", n0)}${ligne("Dépenses", "depenses_totales", n0)}
@@ -561,25 +596,19 @@ function carte(im) {
    <iframe class="det-plan" title="Carte" loading="lazy" referrerpolicy="no-referrer" data-src="https://maps.google.com/maps?q=${q}&z=15&output=embed"></iframe>
    ${payable}
    ${avert.map((a) => `<p class="flag">⚠ ${esc(a)}</p>`).join("")}
-   ${cr.nom ? `<p style="color:var(--mute)">Cruncher : ${esc(cr.nom)}</p>` : ""}
+   ${cr.nom && !INVITE ? `<p style="color:var(--mute)">Cruncher : ${esc(cr.nom)}</p>` : ""}
   </details>
   <div class="bas">
    <a class="btn" target="_blank" rel="noopener" ${im.url ? `href="${esc(im.url)}"` : 'aria-disabled="true"'}${w.retiree ? ' title="Annonce retirée : la fiche Centris peut ne plus exister"' : ""}>Centris</a>
-   <a class="btn p" target="_blank" rel="noopener" ${lienCr ? `href="${lienCr}"` : 'aria-disabled="true" title="Lien Drive pas encore connu"'}>Cruncher</a>
+   ${INVITE ? (cr.dispo ? `<button class="btn p" type="button" data-cr-invite="${esc(im.id || "")}">Télécharger le Cruncher</button>` : "")
+     : `<a class="btn p" target="_blank" rel="noopener" ${lienCr ? `href="${lienCr}"` : 'aria-disabled="true" title="Lien Drive pas encore connu"'}>Cruncher</a>`}
    <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">Carte</a>
-   <button class="btn" type="button" data-partager="${esc(im.id || "")}" title="Envoyer cette fiche (image, lien Centris, copie du Cruncher)">Partager</button>
+   ${INVITE ? "" : `<button class="btn" type="button" data-partager="${esc(im.id || "")}" title="Envoyer un lien vers cette fiche">Partager</button>`}
    <span class="score">Score : ${estNb(im.score) ? esc(im.score) : "à venir"}</span>
   </div>
  </article>`;
 }
 
-// ---------------------------------------------------------------- partage d'une fiche (image + pièces jointes)
-// « Partager » sur une carte ouvre un panneau : la fiche est dessinée en image dans la page (avec le tableau
-// du détail et un plan), puis remise au menu de partage du téléphone (Messenger, WhatsApp, texto…), avec le
-// lien Centris et, au choix, une COPIE du Cruncher en pièce jointe (jamais un lien Drive) et les notes.
-// La personne qui reçoit n'a besoin d'aucun compte ni d'aucun accès au Drive. Aucun calcul : mêmes chiffres
-// que la carte. Plan : OpenStreetMap (l'adresse de l'immeuble y est envoyée pour la situer).
-const MIME_XLSM = "application/vnd.ms-excel.sheet.macroEnabled.12";
 // Notes de François par immeuble (clé = id), lues et écrites dans la feuille Google « Radar_Saisies ».
 let saisies = {};
 
@@ -819,273 +848,191 @@ function majNotes() {
 const noteDe = (im) => String((saisies[im.id] && saisies[im.id].note) || "").trim();
 const adresseCourte = (im) => String(im.adresse || "Adresse inconnue").replace(/,\s*Montr[ée]al\s*$/i, "");
 
-function couper(ctx, txt, larg) {
-  const lignes = [];
-  for (const par of String(txt).split(/\n/)) {
-    let l = "";
-    for (const m of par.split(/\s+/).filter(Boolean)) {
-      const e = l ? l + " " + m : m;
-      if (l && ctx.measureText(e).width > larg) { lignes.push(l); l = m; } else l = e;
-    }
-    lignes.push(l);
-  }
-  return lignes;
-}
-
-// ---- plan (OpenStreetMap) : adresse -> coordonnées -> tuiles. Échec = image sans plan, jamais de blocage.
-const cacheGeo = {};
-async function situer(adresse) {
-  if (cacheGeo[adresse]) return cacheGeo[adresse];
-  const propre = adresse.replace(/^(\d+)\s*,/, "$1");
-  const essais = [...new Set([propre, propre.replace(/^(\d+)\s*[-–]\s*\d+/, "$1")])];
-  for (const a of essais) {
-    try {
-      const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=ca&q="
-        + encodeURIComponent(a + ", Québec, Canada"));
-      const j = r.ok ? await r.json() : [];
-      if (j[0] && isFinite(+j[0].lat) && isFinite(+j[0].lon)) return (cacheGeo[adresse] = {lat: +j[0].lat, lon: +j[0].lon});
-    } catch (e) {}
-  }
-  return null;
-}
-async function chargerPlan(adresse, l, h) {
-  const pt = await situer(adresse);
-  if (!pt) return null;
-  const Z = 16, T = 128, n = 2 ** Z, rad = pt.lat * Math.PI / 180;   // tuiles de 256 px dessinées à 128 : net à l'échelle 2
-  const px = (pt.lon + 180) / 360 * n * T, py = (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * n * T;
-  const x0 = px - l / 2, y0 = py - h / 2, attente = [];
-  for (let tx = Math.floor(x0 / T); tx * T < x0 + l; tx++) for (let ty = Math.floor(y0 / T); ty * T < y0 + h; ty++)
-    attente.push(new Promise((ok) => {
-      const i = new Image(); i.crossOrigin = "anonymous";
-      i.onload = () => ok({i, dx: tx * T - x0, dy: ty * T - y0}); i.onerror = () => ok(null);
-      i.src = `https://tile.openstreetmap.org/${Z}/${tx}/${ty}.png`;
-    }));
-  const tuiles = await Promise.all(attente);
-  return tuiles.every(Boolean) ? {tuiles, T, l, h} : null;
-}
-const delai = (ms) => new Promise((ok) => setTimeout(() => ok(null), ms));
-
-// ---- dessin de la fiche. opts : {plan, notes}
-const PLAN_H = 190;
-function dessinerFiche(ctx, im, L, opts) {
-  opts = opts || {};
-  const C = {ink: "#1d2330", mute: "#6b7280", line: "#e5e7eb", bg: "#f6f7f9", pos: "#0f7b4b", posbg: "#e6f4ec", neg: "#b42318", negbg: "#fdecea", acc: "#2446a8", warnbg: "#fff4de"};
-  const P = 24, larg = L - 2 * P, police = 'system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
-  const f = (taille, poids) => { ctx.font = `${poids || 400} ${taille}px ${police}`; };
-  const chemin = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
-  const boite = (x, y, w, h, couleur) => { ctx.fillStyle = couleur; chemin(x, y, w, h, 8); ctx.fill(); };
-  // Écrit un texte en réduisant la taille s'il dépasse la largeur donnée.
-  const ecrire = (txt, x, y, taille, poids, couleur, max, aligne) => {
-    let t = taille; f(t, poids);
-    while (max && t > 9 && ctx.measureText(txt).width > max) { t -= 0.5; f(t, poids); }
-    ctx.fillStyle = couleur; ctx.textAlign = aligne || "left"; ctx.fillText(txt, x, y);
-  };
-  const paragraphe = (txt, x, y, taille, poids, couleur, max, interligne) => {
-    f(taille, poids); ctx.fillStyle = couleur; ctx.textAlign = "left";
-    for (const l of couper(ctx, txt, max)) { ctx.fillText(l, x, y); y += interligne; }
-    return y;
-  };
-  const titre = (txt, y) => { ecrire(txt, P, y, 10.5, 650, C.mute); return y + 16; };
-  const w = vue(im), ve = im.valeur_economique || {}, ec = {A: w.ecA, C: w.ecC}, mrb = {A: w.mrbA, C: w.mrbC}, lo = im.loyer_moyen_porte;
-  ctx.textBaseline = "alphabetic";
-  let y = P + 12;
-
-  // Bandeau
-  ecrire("RADAR IMMOBILIER", P, y, 11, 650, C.mute);
-  ecrire([im.provenance === "centris" && im.no_inscription ? "Centris " + im.no_inscription : "",
-          "analysé le " + dateCourte(im.date_analyse)].filter(Boolean).join(" · "), L - P, y, 11, 400, C.mute, larg - 130, "right");
-  y += 30;
-
-  // Adresse, secteur, portes
-  y = paragraphe(adresseCourte(im), P, y, 22, 650, C.ink, larg, 27);
-  y = paragraphe((im.secteur || "Secteur inconnu") + " · " + (estNb(im.nb_logements) ? im.nb_logements + " portes" : "portes ?")
-    + typo(im.typologie), P, y - 6, 13, 400, C.mute, larg, 18) + 2;
-
-  // Prix demandé, prix par porte, MRB
-  const esp = 8, l1 = (larg - 2 * esp) * 0.41, l2 = (larg - 2 * esp) * 0.33, l3 = larg - 2 * esp - l1 - l2, h = 66;
-  [[P, l1, "Prix demandé", $$(w.prix), 21, ""],
-   [P + l1 + esp, l2, "Prix par porte", $$(w.ppp), 18, ""],
-   [P + l1 + l2 + 2 * esp, l3, "MRB", estNb(mrb.A) ? nb1.format(mrb.A) : "—", 18, estNb(mrb.C) ? "potentiel : " + nb1.format(mrb.C) : ""],
-  ].forEach(([x, w, lib, val, taille, note]) => {
-    boite(x, y, w, h, C.bg);
-    ecrire(lib, x + 10, y + 19, 11, 400, C.mute, w - 20);
-    ecrire(val, x + 10, y + 43, taille, 700, C.ink, w - 20);
-    if (note) ecrire(note, x + 10, y + 58, 10.5, 400, C.mute, w - 20);
-  });
-  y += h + 26;
-
-  // Valeur économique A / B / C et écarts
-  const lc = (larg - 2 * esp) / 3, hE = 52, aEcart = estNb(ec.A) || estNb(ec.C);
-  [["A · actuel", ve.A, ec.A], ["B · converti", ve.B, null], ["C · final", ve.C, ec.C]].forEach(([lib, val, ecart], i) => {
-    const x = P + i * (lc + esp), cx = x + lc / 2;
-    ecrire(lib, cx, y, 11, 400, C.mute, lc - 8, "center");
-    ecrire($mille(val), cx, y + 24, 17, 650, C.ink, lc - 8, "center");
-    if (estNb(ecart)) {
-      boite(x, y + 36, lc, hE, ecart >= 0 ? C.posbg : C.negbg);
-      ecrire("Écart avec le prix demandé", cx, y + 54, 9.5, 400, C.mute, lc - 10, "center");
-      ecrire(signe$(ecart), cx, y + 76, 17, 700, ecart >= 0 ? C.pos : C.neg, lc - 10, "center");
-    }
-  });
-  y += 36 + (aEcart ? hE + 26 : 14);
-
-  // Microfiche (la ligne du loyer est refaite depuis le champ structuré, comme sur la carte)
-  const loyer = lo && estNb(lo.A)
-    ? `Loyer moyen par porte : ${$$(lo.A)}/mois actuel` + (estNb(lo.C) ? ` → ${$$(lo.C)}/mois potentiel (${estNb(lo.ecart) ? (lo.ecart >= 0 ? "+" : "−") + $$(Math.abs(lo.ecart)) : "—"})` : "")
-    : null;
-  const mf = (im.microfiche || []).map((t) => (/^Loyer moyen par porte/.test(t) && loyer) ? loyer : String(t));
-  for (const l of mf) {
-    ecrire("•", P + 2, y, 13, 400, C.ink);
-    y = paragraphe(l, P + 16, y, 13, 400, C.ink, larg - 16, 18.5) + 4;
-  }
-  if (mf.length) y += 12;
-
-  // Tableau du détail : revenus, dépenses, RNO, facteur de dépenses (+ TGA au prix demandé quand la machine le fournit)
-  const Pt = im.portraits || {}, tg = im.tga_prix_demande || {};
-  const aPortrait = ["A", "B", "C"].some((p) => Pt[p] && typeof Pt[p] === "object");
-  if (aPortrait) {
-    const n0 = (v) => estNb(v) ? nbFr.format(v) + " $" : "—", colL = larg * 0.37, colW = (larg - colL) / 3, hl = 25;
-    const lignes = [["Revenus bruts", (p) => n0((Pt[p] || {}).revenus_bruts)], ["Dépenses", (p) => n0((Pt[p] || {}).depenses_totales)],
-                    ["Revenu net (RNO)", (p) => n0((Pt[p] || {}).rno)], ["Facteur de dépenses", (p) => pct((Pt[p] || {}).facteur_depenses)]];
-    if (["A", "B", "C"].some((p) => estNb(tg[p]))) lignes.push(["TGA au prix demandé", (p) => pct(tg[p])]);
-    y = titre("DÉTAIL", y);
-    ["A · actuel", "B · converti", "C · final"].forEach((t, i) => ecrire(t, P + colL + (i + 1) * colW, y, 10.5, 400, C.mute, colW - 6, "right"));
-    y += 8;
-    for (const [lib, val] of lignes) {
-      ctx.fillStyle = C.line; ctx.fillRect(P, y, larg, 1);
-      ecrire(lib, P, y + 17, 12.5, 400, C.ink, colL - 6);
-      ["A", "B", "C"].forEach((p, i) => ecrire(val(p), P + colL + (i + 1) * colW, y + 17, 12.5, 500, C.ink, colW - 6, "right"));
-      y += hl;
-    }
-    y += 16;
-  }
-
-  // Plan
-  if (opts.plan) {
-    const pl = opts.plan;
-    ctx.save(); chemin(P, y, larg, pl.h, 10); ctx.clip();
-    ctx.fillStyle = C.bg; ctx.fillRect(P, y, larg, pl.h);
-    for (const t of pl.tuiles) ctx.drawImage(t.i, P + t.dx, y + t.dy, pl.T, pl.T);
-    const cx = P + larg / 2, cy = y + pl.h / 2;                       // repère de l'immeuble
-    ctx.beginPath(); ctx.arc(cx, cy, 15, 0, 2 * Math.PI); ctx.fillStyle = "rgba(180,35,24,.18)"; ctx.fill();
-    ctx.beginPath(); ctx.arc(cx, cy, 6.5, 0, 2 * Math.PI); ctx.fillStyle = C.neg; ctx.fill();
-    ctx.lineWidth = 2.5; ctx.strokeStyle = "#fff"; ctx.stroke();
-    f(9, 400); const cr = "© OpenStreetMap", lw = ctx.measureText(cr).width + 10;
-    ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.fillRect(P + larg - lw, y + pl.h - 16, lw, 16);
-    ctx.fillStyle = C.mute; ctx.textAlign = "right"; ctx.fillText(cr, P + larg - 5, y + pl.h - 5);
-    ctx.restore();
-    ctx.lineWidth = 1; ctx.strokeStyle = C.line; chemin(P + .5, y + .5, larg - 1, pl.h - 1, 10); ctx.stroke();
-    y += pl.h + 24;
-  }
-
-  // Notes (seulement si François choisit de les joindre)
-  if (opts.notes) {
-    y = titre("NOTES", y);
-    f(12.5, 400);
-    const lg = couper(ctx, opts.notes, larg - 24), hn = lg.length * 18 + 18;
-    boite(P, y - 4, larg, hn, C.warnbg);
-    paragraphe(opts.notes, P + 12, y + 15, 12.5, 400, C.ink, larg - 24, 18);
-    y += hn + 18;
-  }
-
-  // Pied
-  ctx.fillStyle = C.line; ctx.fillRect(P, y - 6, larg, 1); y += 12;
-  y = paragraphe("Valeur économique = revenu net ÷ TGA" + (estNb(ve.tga) ? " de " + pct(ve.tga) : "") + ". Écart = valeur économique − prix demandé, arrondi au millier."
-    + " MRB = prix demandé ÷ revenus bruts. Estimation préliminaire, à valider.", P, y, 10.5, 400, C.mute, larg, 15);
-  return y + P - 12;
-}
-function imageFiche(im, opts) {
-  const L = 540, ECHELLE = 2, brouillon = document.createElement("canvas");
-  brouillon.width = 8; brouillon.height = 8;
-  let ctx = brouillon.getContext("2d");
-  const haut = Math.ceil(dessinerFiche(ctx, im, L, Object.assign({}, opts, {plan: opts && opts.plan ? {tuiles: [], T: 0, h: opts.plan.h} : null})));  // 1er passage : mesure
-  const toile = document.createElement("canvas");
-  toile.width = L * ECHELLE; toile.height = haut * ECHELLE;
-  ctx = toile.getContext("2d"); ctx.scale(ECHELLE, ECHELLE);
-  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, L, haut);
-  dessinerFiche(ctx, im, L, opts);
-  // Conversion immédiate (sans attente) : le menu de partage doit s'ouvrir dans le même geste.
-  const brut = atob(toile.toDataURL("image/png").split(",")[1]), octets = new Uint8Array(brut.length);
-  for (let i = 0; i < brut.length; i++) octets[i] = brut.charCodeAt(i);
-  return new Blob([octets], {type: "image/png"});
-}
-
-// ---- panneau de partage
-let pp = null;   // partage en cours : {im, plan, planFini, cruncher, crFini, crErreur, image}
 const nomSur = (s) => String(s).replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
-const tailleMo = (o) => nb1.format(o / 1048576) + " Mo";
-function majPartage() {
-  const e = pp; if (!e) return;
-  const avecNotes = e.note && $("pp-notes").checked, avecCr = e.crPossible && $("pp-cr").checked;
-  try { e.image = imageFiche(e.im, {plan: e.plan, notes: avecNotes ? e.note : ""}); } catch (err) { e.image = null; }
-  if (e.urlApercu) URL.revokeObjectURL(e.urlApercu);
-  e.urlApercu = e.image ? URL.createObjectURL(e.image) : ""; $("pp-apercu").src = e.urlApercu;
-  const pret = e.image && e.planFini && (!avecCr || e.crFini);
-  $("pp-envoyer").disabled = !pret;
-  let t = "";
-  if (!e.image) t = "L'image n'a pas pu être produite.";
-  else if (!e.planFini) t = "Préparation du plan…";
-  else if (avecCr && !e.crFini) t = "Préparation de la copie du Cruncher…";
-  else {
-    const p = ["Image de la fiche"];
-    if (avecCr && e.cruncher) p.push("copie du Cruncher (" + tailleMo(e.cruncher.size) + ")");
-    if (e.im.url) p.push("lien Centris");
-    t = "Prêt : " + p.join(" + ") + "." + (e.plan ? "" : " Plan indisponible pour cette adresse.");
-    if (avecCr && !e.cruncher) t += " ⚠ Cruncher non joint : " + (e.crErreur || "fichier introuvable") + ".";
-  }
-  if (e.avis) t = e.avis;
-  $("pp-etat").textContent = t;
-  $("pp-telecharger").hidden = !e.aTelecharger; $("pp-annuler").textContent = e.aTelecharger ? "Fermer" : "Annuler";
-}
-function ouvrirPartage(im) {
-  const cr = im.cruncher || {}, e = pp = {im, note: noteDe(im), plan: null, planFini: false, cruncher: null, crFini: false, crErreur: "", crPossible: !!(cr.drive_id && jeton)};
-  $("pp-titre").textContent = "Partager — " + adresseCourte(im);
-  $("pp-l-notes").hidden = !e.note; $("pp-notes").checked = true;
-  $("pp-cr").checked = e.crPossible; $("pp-cr").disabled = !e.crPossible;
-  $("pp-l-cr").style.opacity = e.crPossible ? "" : ".5";
-  majPartage();
-  const d = $("pp"); if (d.showModal) d.showModal(); else d.setAttribute("open", "");
-  // Plan : au plus 7 secondes, puis on continue sans.
-  Promise.race([chargerPlan(String(im.adresse || ""), 540 - 48, PLAN_H).catch(() => null), delai(7000)])
-    .then((p) => { if (pp !== e) return; e.plan = p; e.planFini = true; majPartage(); });
-  // Copie du Cruncher : téléchargée depuis le Drive de François, pour être envoyée en pièce jointe.
-  if (e.crPossible) {
-    drive(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(cr.drive_id)}?alt=media&supportsAllDrives=true`)
-      .then((r) => r.blob())
-      .then((b) => { e.cruncher = new File([b], nomSur(cr.nom || "Cruncher.xlsm"), {type: b.type && b.type !== "application/octet-stream" ? b.type : MIME_XLSM}); })
-      .catch((err) => { e.crErreur = err && err.reconnecter ? "session Google expirée, reconnecte-toi" : "le fichier n'a pas pu être lu dans le Drive"; })
-      .then(() => { e.crFini = true; if (pp === e) majPartage(); });
-  }
-}
-function fermerPartage() {
-  if (pp && pp.urlApercu) URL.revokeObjectURL(pp.urlApercu);
-  pp = null; const d = $("pp"); if (d.close) d.close(); else d.removeAttribute("open");
-}
 function telechargerFichier(fichier) {
   const a = document.createElement("a"); a.href = URL.createObjectURL(fichier); a.download = fichier.name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
 }
-// Appelé directement par le clic sur « Envoyer » : tout est déjà prêt, le menu de partage s'ouvre dans le même geste.
+
+// ---------------------------------------------------------------- partage par lien (bloc C, étape 10 — bêta 0.24)
+// François choisit une fiche ou une sélection ; la page inscrit une ligne dans l'onglet « Partages » de sa feuille
+// Radar_Saisies (code tiré au hasard, fiches, Cruncher oui/non, notes oui/non, pour qui, date), puis ouvre le menu
+// de partage du téléphone avec UN SEUL LIEN : …/radar/?p=CODE. Rien d'autre ne part (aucun fichier joint).
+// L'invité ouvre ce lien : la page passe en mode invité et demande les fiches au script Google « Radar_Partage »,
+// qui ne répond qu'aux codes inscrits dans l'onglet. Le Cruncher : une copie faite par le script, remise à l'invité
+// en téléchargement direct. Voir CHANTIER_Partage.md.
+const ONGLET_PARTAGES = "Partages";
+const ENTETE_PARTAGES = ["code", "fiches", "cruncher", "notes", "pour_qui", "cree_le", "actif", "copies"];
+let ongletPartagesPret = false;
+let ps = null;   // partage en cours : {mode, base, choisis, code, lien, envoye, ecrit, erreur}
+
+function nouveauCode() {
+  const alpha = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789", o = new Uint8Array(16);
+  crypto.getRandomValues(o);
+  return Array.from(o, (x) => alpha[x % alpha.length]).join("");
+}
+const lienDe = (code) => location.origin + location.pathname + "?p=" + code;
+
+async function assurerOngletPartages() {
+  await assurerFeuille();
+  if (ongletPartagesPret) return;
+  const f = await appelGoogle(SHEETS + feuilleId + "?fields=sheets.properties.title");
+  const titres = (f.sheets || []).map((s) => s.properties && s.properties.title);
+  if (!titres.includes(ONGLET_PARTAGES)) {
+    await appelGoogle(SHEETS + feuilleId + ":batchUpdate", {method: "POST", body: {requests: [{addSheet: {properties: {title: ONGLET_PARTAGES}}}]}});
+    await appelGoogle(SHEETS + feuilleId + "/values/" + encodeURIComponent(ONGLET_PARTAGES + "!A1:H1") + "?valueInputOption=RAW", {method: "PUT", body: {values: [ENTETE_PARTAGES]}});
+  }
+  ongletPartagesPret = true;
+}
+async function inscrirePartage(e) {
+  await assurerOngletPartages();
+  const ligne = [e.code, [...e.choisis].join(","), e.avecCr ? "oui" : "non", e.avecNotes ? "oui" : "non", e.pourQui, new Date().toISOString(), "oui", ""];
+  await appelGoogle(SHEETS + feuilleId + "/values/" + encodeURIComponent(ONGLET_PARTAGES + "!A:H") + ":append?valueInputOption=RAW&insertDataOption=INSERT_ROWS", {method: "POST", body: {values: [ligne]}});
+}
+
+// Les fiches affichées en ce moment (mêmes filtres et même tri que la grille) : la liste de la sélection.
+function fichesAffichees() {
+  const test = (FILTRES.find((f) => f[0] === filtre) || FILTRES[0])[3];
+  return trier((donnees.immeubles || []).filter(duSecteur).filter((i) => test(i, vue(i))));
+}
+const ficheParId = (id) => ((donnees && donnees.immeubles) || []).find((i) => String(i.id || "") === id);
+
+function ouvrirPartage(im, mode) {
+  ps = {mode: mode || "un", base: im || null, choisis: new Set(), code: "", envoye: false, ecrit: false, erreur: ""};
+  if (im) ps.choisis.add(String(im.id));
+  else fichesAffichees().forEach((i) => { if (i.id && !vue(i).retiree) ps.choisis.add(String(i.id)); });
+  $("pp-cr").checked = true; $("pp-notes").checked = true; $("pp-qui").value = "";
+  $("pp-liste").innerHTML = fichesAffichees().map((i) => {
+    const w = vue(i);
+    return `<label><input type="checkbox" data-choix="${esc(i.id || "")}"><span><b>${esc(adresseCourte(i))}</b><small>${esc(i.secteur || "")} · ${estNb(i.nb_logements) ? i.nb_logements + " portes" : "?"} · ${$$(w.prix)}${w.retiree ? " · retirée" : ""}</small></span></label>`;
+  }).join("");
+  majPartage();
+  const d = $("pp"); if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+}
+function fermerPartage() { ps = null; const d = $("pp"); if (d.close) d.close(); else d.removeAttribute("open"); }
+
+function majPartage() {
+  const e = ps; if (!e) return;
+  const sel = e.mode === "sel" || !e.base;
+  $("pp-m-un").hidden = !e.base;
+  $("pp-m-un").setAttribute("aria-pressed", String(!sel)); $("pp-m-sel").setAttribute("aria-pressed", String(sel));
+  $("pp-un").hidden = sel; $("pp-sel").hidden = !sel;
+  if (e.base) {
+    const im = e.base;
+    $("pp-un").innerHTML = `<b>${esc(adresseCourte(im))}</b><small>${esc(im.secteur || "")} · ${estNb(im.nb_logements) ? im.nb_logements + " portes" : "?"}${im.no_inscription ? " · Centris " + esc(im.no_inscription) : ""}</small>`;
+  }
+  $("pp-liste").querySelectorAll("input[data-choix]").forEach((c) => { c.checked = e.choisis.has(c.dataset.choix); });
+  const ids = idsAEnvoyer(e);
+  $("pp-compte").textContent = ids.length + " fiche" + (ids.length > 1 ? "s" : "") + " cochée" + (ids.length > 1 ? "s" : "");
+  const notesDispo = ids.some((id) => noteDe({id}));
+  $("pp-l-notes").hidden = !notesDispo;
+  ["pp-m-un", "pp-m-sel", "pp-cr", "pp-notes", "pp-qui"].forEach((id) => { $(id).disabled = e.envoye; });
+  $("pp-liste").querySelectorAll("input").forEach((c) => { c.disabled = e.envoye; });
+
+  let t = "", pret = false;
+  if (!URL_SCRIPT_PARTAGE) t = "Le partage n'est pas encore branché : le script Google « Radar_Partage » reste à publier (voir la fiche du chantier).";
+  else if (notesEtat === "sans-droit") t = "Le partage s'inscrit dans ta feuille Radar_Saisies : touche d'abord « Activer les notes » en haut de la page.";
+  else if (notesEtat !== "pret") t = "Lecture de ta feuille Radar_Saisies…";
+  else if (!ids.length) t = "Coche au moins une fiche.";
+  else { pret = true; t = "Un seul lien partira. La personne l'ouvre sans compte ni autorisation."; }
+  if (e.envoye) {
+    pret = false;
+    t = e.erreur ? "⚠ " + e.erreur
+      : e.ecrit ? "Lien actif. " + (e.avis || "Envoyé.") + " " + (e.copie || "")
+      : "Inscription du lien dans ta feuille…";
+  }
+  $("pp-etat").textContent = t;
+  $("pp-lien").hidden = !e.envoye || !e.lien; $("pp-lien").textContent = e.lien || "";
+  $("pp-envoyer").hidden = e.envoye; $("pp-envoyer").disabled = !pret;
+  $("pp-reessayer").hidden = !(e.envoye && e.erreur);
+  $("pp-annuler").textContent = e.envoye ? "Fermer" : "Annuler";
+}
+const idsAEnvoyer = (e) => (e.mode === "sel" || !e.base) ? [...e.choisis] : [String(e.base.id)];
+
+async function ecrireEtPreparer(e) {
+  e.erreur = ""; majPartage();
+  try { await inscrirePartage(e); e.ecrit = true; }
+  catch (err) {
+    if (err && err.status === 404) { feuilleId = null; ongletPartagesPret = false; }
+    e.erreur = "Le lien n'a pas pu être inscrit dans ta feuille : il ne s'ouvrira pas chez la personne. Touche « Réessayer »."
+      + (apiFermee(err) ? " (Google Sheets API fermée.)" : "");
+  }
+  if (ps === e) majPartage();
+  if (!e.ecrit || !e.avecCr) return;
+  // Le script fait tout de suite la copie figée du Cruncher (sinon il la fera à la première demande de l'invité).
+  e.copie = "Copie du Cruncher en préparation…"; if (ps === e) majPartage();
+  try {
+    const r = await (await fetch(URL_SCRIPT_PARTAGE + "?p=" + encodeURIComponent(e.code) + "&preparer=1")).json();
+    e.copie = r && r.ok ? "Copie du Cruncher prête." : "La copie du Cruncher sera faite à l'ouverture du lien.";
+  } catch (err) { e.copie = "La copie du Cruncher sera faite à l'ouverture du lien."; }
+  if (ps === e) majPartage();
+}
+
+// Appelé directement par le toucher sur « Envoyer » : l'inscription part en même temps que le menu de partage,
+// sans rien attendre avant (Android refuse le menu si le geste est « consommé » par une attente).
 async function envoyerPartage() {
-  const e = pp; if (!e || !e.image) return;
-  const im = e.im, courte = adresseCourte(im);
-  const image = new File([e.image], "Fiche - " + nomSur(courte) + ".png", {type: "image/png"});
-  const cr = e.crPossible && $("pp-cr").checked ? e.cruncher : null;
-  const texte = courte + (im.url ? "\n" + im.url : "");
-  const peut = (f) => { try { return !!(navigator.canShare && navigator.share && navigator.canShare({files: f})); } catch (err) { return false; } };
-  const dire = (t) => { e.avis = t; if (pp === e) majPartage(); };
-  if (peut([image])) {                                                             // téléphone
-    // Rien avant navigator.share : un téléchargement lancé ici consomme le geste de l'utilisateur et Android
-    // refuse alors le partage (NotAllowedError). Le Cruncher non partageable s'offre après, par son propre bouton.
-    const tout = cr && peut([image, cr]);
-    try { await navigator.share({files: tout ? [image, cr] : [image], title: courte, text: texte}); }
-    catch (err) { if (err && err.name === "AbortError") return; dire("Le partage a échoué (" + (err && err.name || "erreur") + ")."); return; }
-    if (cr && !tout) { e.aTelecharger = cr; dire("Fiche envoyée. Ce téléphone refuse le fichier Excel dans ce menu : touche « Télécharger le Cruncher », puis joins-le à la main depuis tes téléchargements."); }
-    else fermerPartage();
+  const e = ps; if (!e || e.envoye) return;
+  const ids = idsAEnvoyer(e); if (!ids.length) return;
+  e.choisis = new Set(ids); e.avecCr = $("pp-cr").checked; e.avecNotes = !$("pp-l-notes").hidden && $("pp-notes").checked;
+  e.pourQui = $("pp-qui").value.trim(); e.code = nouveauCode(); e.lien = lienDe(e.code); e.envoye = true;
+  const travail = ecrireEtPreparer(e);
+  let titre, texte;
+  if (ids.length === 1) {
+    const im = ficheParId(ids[0]) || e.base || {};
+    titre = adresseCourte(im);
+    texte = titre + " — " + (im.secteur || "") + (estNb(im.nb_logements) ? ", " + im.nb_logements + " portes" : "")
+      + (im.url ? "\nCentris : " + im.url : "") + "\nFiche Radar :";
+  } else {
+    titre = "Radar immobilier — " + ids.length + " immeubles";
+    texte = "Sélection de " + ids.length + " immeubles de mon Radar immobilier :";
+  }
+  if (navigator.share) {
+    try { await navigator.share({title: titre, text: texte, url: e.lien}); }
+    catch (err) {
+      e.avis = err && err.name === "AbortError" ? "Envoi annulé : tu peux copier le lien ci-dessous."
+        : "Le menu de partage a échoué (" + (err && err.name || "erreur") + ") : copie le lien ci-dessous.";
+    }
+  } else {
+    try { await navigator.clipboard.writeText(texte + " " + e.lien); e.avis = "Message et lien copiés : colle-les où tu veux."; }
+    catch (err) { e.avis = "Copie le lien ci-dessous."; }
+  }
+  if (ps === e) majPartage();
+  await travail;
+}
+
+// ---------------------------------------------------------------- mode invité (lien …/radar/?p=CODE)
+async function chargerInvite() {
+  document.body.classList.add("invite");
+  $("btn-connexion").hidden = true; $("btn-autre-compte").hidden = true;
+  $("sous-titre").textContent = "Fiches partagées";
+  if (!URL_SCRIPT_PARTAGE) { message("Ce partage n'est pas encore en service."); return; }
+  message("Ouverture des fiches partagées…");
+  let r;
+  try { r = await (await fetch(URL_SCRIPT_PARTAGE + "?p=" + encodeURIComponent(INVITE))).json(); }
+  catch (e) { message("Les fiches n'ont pas pu être lues (réseau). Recharge la page dans un instant."); return; }
+  if (!r || !r.ok) {
+    message({lien_inconnu: "Ce lien de partage n'existe pas. Vérifie qu'il a été copié au complet.",
+             lien_coupe: "Ce lien de partage a été désactivé par la personne qui te l'a envoyé.",
+             lien_invalide: "Ce lien de partage est incomplet."}[r && r.erreur] || "Les fiches n'ont pas pu être lues. Recharge la page dans un instant.");
     return;
   }
-  telechargerFichier(image); if (cr) telechargerFichier(cr);                         // ordinateur
-  let copie = false; try { if (im.url) { await navigator.clipboard.writeText(texte); copie = true; } } catch (err) {}
-  dire((cr ? "Image et copie du Cruncher téléchargées" : "Image téléchargée") + (copie ? " · lien Centris copié." : "."));
+  donnees = {format: r.format, genere_le: r.genere_le, immeubles: r.fiches || []};
+  journal = null;
+  afficher();
+  notesEtat = "invite";
+}
+async function telechargerCruncherInvite(b) {
+  const id = b.dataset.crInvite, avant = b.textContent;
+  b.disabled = true; b.textContent = "Préparation…";
+  try {
+    const r = await (await fetch(URL_SCRIPT_PARTAGE + "?p=" + encodeURIComponent(INVITE) + "&cr=" + encodeURIComponent(id))).json();
+    if (!r || !r.ok) throw new Error();
+    const brut = atob(r.base64), o = new Uint8Array(brut.length);
+    for (let i = 0; i < brut.length; i++) o[i] = brut.charCodeAt(i);
+    telechargerFichier(new File([o], nomSur(r.nom || "Cruncher.xlsm"), {type: r.type || "application/vnd.ms-excel.sheet.macroEnabled.12"}));
+    b.textContent = "Téléchargé ✓";
+  } catch (e) { b.textContent = "Échec — réessayer"; }
+  b.disabled = false; setTimeout(() => { b.textContent = avant; }, 4000);
 }
 
 // ---- Pastille « Dernier run » = dernier passage de la collecte (bêta 0.22, étape 8 du plan)
@@ -1192,8 +1139,10 @@ $("liste-secteur").addEventListener("click", (e) => { if (e.target.id === "ferme
 document.addEventListener("click", (e) => { if (!$("liste-secteur").hidden && !e.target.closest("#secteur")) ouvrirSecteurs(false); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("liste-secteur").hidden) { ouvrirSecteurs(false); $("btn-secteur").focus(); } });
 $("grille").addEventListener("change", (e) => { const s = e.target; if (s.dataset && s.dataset.etape !== undefined && s.matches("select")) choisirEtape(s.dataset.etape, s.value); });
-// Partager : menu de partage du téléphone (Messenger, WhatsApp, texto…) ; sinon, copie du lien.
+// Partager (en-tête) : une sélection, toutes les fiches affichées cochées. Tant que le script n'est pas publié :
+// l'ancien comportement (aperçu figé).
 $("btn-partager").addEventListener("click", async () => {
+  if (URL_SCRIPT_PARTAGE && donnees) { ouvrirPartage(null, "sel"); return; }
   const dire = (t) => { $("txt-partager").textContent = t; setTimeout(() => { $("txt-partager").textContent = "Partager"; }, 2500); };
   if (navigator.share) {
     try { await navigator.share({title: "Radar immobilier", text: "Aperçu de mon Radar immobilier", url: LIEN_PARTAGE}); }
@@ -1202,18 +1151,28 @@ $("btn-partager").addEventListener("click", async () => {
   }
   try { await navigator.clipboard.writeText(LIEN_PARTAGE); dire("Lien copié"); } catch (e) { dire("Échec"); }
 });
-// Partager une fiche : bouton « Partager » de chaque carte -> panneau de partage.
+// Partager une fiche (bouton de chaque carte) ; Cruncher de l'invité.
 $("grille").addEventListener("click", (e) => {
+  const c = e.target.closest && e.target.closest("[data-cr-invite]");
+  if (c) { telechargerCruncherInvite(c); return; }
   const b = e.target.closest && e.target.closest("[data-partager]");
   if (!b) return;
-  const im = ((donnees && donnees.immeubles) || []).find((i) => String(i.id || "") === b.dataset.partager);
-  if (im) ouvrirPartage(im);
+  const im = ficheParId(b.dataset.partager);
+  if (im) ouvrirPartage(im, "un");
 });
+$("pp-m-un").addEventListener("click", () => { if (ps && !ps.envoye) { ps.mode = "un"; majPartage(); } });
+$("pp-m-sel").addEventListener("click", () => { if (ps && !ps.envoye) { ps.mode = "sel"; majPartage(); } });
+$("pp-liste").addEventListener("change", (e) => {
+  const c = e.target; if (!ps || !c.dataset || c.dataset.choix === undefined) return;
+  if (c.checked) ps.choisis.add(c.dataset.choix); else ps.choisis.delete(c.dataset.choix);
+  majPartage();
+});
+$("pp-tout").addEventListener("click", () => { if (ps && !ps.envoye) { fichesAffichees().forEach((i) => i.id && ps.choisis.add(String(i.id))); majPartage(); } });
+$("pp-rien").addEventListener("click", () => { if (ps && !ps.envoye) { ps.choisis.clear(); majPartage(); } });
 $("pp-envoyer").addEventListener("click", envoyerPartage);
+$("pp-reessayer").addEventListener("click", () => { if (ps && ps.envoye && !ps.ecrit) ecrireEtPreparer(ps); });
 $("pp-annuler").addEventListener("click", fermerPartage);
-$("pp-telecharger").addEventListener("click", () => { if (pp && pp.aTelecharger) telechargerFichier(pp.aTelecharger); });
-$("pp").addEventListener("cancel", () => { if (pp && pp.urlApercu) URL.revokeObjectURL(pp.urlApercu); pp = null; });
-["pp-notes", "pp-cr"].forEach((id) => $(id).addEventListener("change", () => { if (pp) { pp.avis = ""; majPartage(); } }));
+$("pp").addEventListener("cancel", () => { ps = null; });
 const basculerJournal = () => { $("panneau-journal").hidden = !$("panneau-journal").hidden; };
 $("etat").addEventListener("click", basculerJournal);
 // La petite carte Google Maps ne se charge qu'à l'ouverture du détail.
@@ -1222,8 +1181,8 @@ document.addEventListener("toggle", (e) => {
   if (f) { f.src = f.dataset.src; f.removeAttribute("data-src"); }
 }, true);
 
-jeton = lireJetonMemorise();
-if (jeton) { planifierRenouvellement(); charger(); if (compteMemorise()) chargerGIS().catch(() => {}); }
+if (INVITE) { document.querySelector("h1 .inv").hidden = false; chargerInvite(); }
+else if ((jeton = lireJetonMemorise())) { planifierRenouvellement(); charger(); if (compteMemorise()) chargerGIS().catch(() => {}); }
 else if (CLIENT_ID && compteMemorise()) {
   // Retour après expiration : un essai sans clic (réussit si le navigateur laisse passer la fenêtre), sinon un bouton.
   ecranConnexion("Session expirée. Un toucher suffit pour revenir.");
