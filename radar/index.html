@@ -20,6 +20,9 @@
   Pastille « Dernier run » (bêta 0.22) : dernier passage de la collecte, lu dans journal_runs.json (bloc
   « collecte », écrit par le script Google). Verte = réussi ; rouge = échec ; jaune = plus de 3 h sans passage,
   heures de nuit (23 h à 6 h, Montréal) non comptées. Sans bloc « collecte » : dernière analyse, comme avant.
+  Mise à jour automatique (bêta 0.23) : au retour sur l'onglet, la page compare son numéro de version (étiquette
+  « bêta X.YY ») à celui de la page en ligne et se recharge seule s'il a changé, jamais pendant une frappe.
+  Le numéro DOIT donc changer à chaque publication.
   Contrat de données : CHANTIER_Portail_Premiere_Carte.md §5.
 -->
 <style>
@@ -136,7 +139,7 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
 <body>
 <header>
  <div class="top">
-  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.22</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.23</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
   <button class="etat" id="etat" type="button" hidden></button>
  </div>
  <div class="barre" id="barre" hidden>
@@ -1147,6 +1150,31 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) Object.keys(noteMinut).forEach(enregistrerNote);
   else if (donnees && jeton && notesEtat === "pret") chargerNotes();
 });
+// Mise à jour automatique (bêta 0.23, décision de François du 14 oct. 2026) : au retour sur l'onglet, la page
+// relit sa propre version en ligne ; si le numéro (bêta X.YY) a changé, elle se recharge seule. Jamais pendant
+// une frappe : elle attend que la zone de notes soit quittée et que les notes soient enregistrées.
+const MA_VERSION = (document.querySelector("h1 .ver") || {}).textContent || "";
+let derniereVerif = 0, rechargePrevue = false;
+const enFrappe = () => { const a = document.activeElement; return !!(a && (a.tagName === "TEXTAREA" || a.tagName === "INPUT")); };
+async function verifierVersion() {
+  if (rechargePrevue || !MA_VERSION || Date.now() - derniereVerif < 60000) return;
+  derniereVerif = Date.now();
+  try {
+    const r = await fetch(location.pathname + "?v=" + Date.now(), {cache: "no-store"});
+    if (!r.ok) return;
+    const m = (await r.text()).match(/class="ver"[^>]*>([^<]+)</);
+    if (m && m[1].trim() && m[1].trim() !== MA_VERSION.trim()) { rechargePrevue = true; rechargerQuandPret(); }
+  } catch (e) { /* hors ligne : on réessaiera au prochain retour */ }
+}
+async function rechargerQuandPret() {
+  if (enFrappe()) { document.addEventListener("focusout", () => setTimeout(rechargerQuandPret, 300), {once: true}); return; }
+  Object.keys(noteMinut).forEach(enregistrerNote);
+  try { await fileNotes; } catch (e) {}
+  location.reload();
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) verifierVersion(); });
+window.addEventListener("focus", verifierVersion);
+
 $("btn-connexion").addEventListener("click", () => (jeton ? charger() : connecter()));
 $("btn-autre-compte").addEventListener("click", () => { oublierJeton(); memoriserCompte(""); connecter(true); });
 document.addEventListener("click", renouveler, true);
