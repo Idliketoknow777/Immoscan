@@ -163,7 +163,7 @@ h1 .inv{font-size:11px;font-weight:600;color:var(--acc);margin-left:4px;vertical
 <body>
 <header>
  <div class="top">
-  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.24</span><span class="inv" hidden>(invité)</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.25</span><span class="inv" hidden>(invité)</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
   <button class="etat" id="etat" type="button" hidden></button>
  </div>
  <div class="barre" id="barre" hidden>
@@ -228,7 +228,7 @@ const FORMATS_CONNUS = ["1"];
 // Le lien du portail lui-même ne montrerait rien à un invité : les données sont dans le Drive de François.
 const LIEN_PARTAGE = "https://claude.ai/artifact/UuhXLBazej9v1EqTG7snNk";   // repli tant que le script n'est pas publié
 // Adresse « /exec » du script Google Radar_Partage (application Web publiée par François). Vide = partage pas encore branché.
-const URL_SCRIPT_PARTAGE = "";
+const URL_SCRIPT_PARTAGE = "https://script.google.com/macros/s/AKfycbw2Za8m-rD-JWtcWb0E31PcKRoURCE2tdMBiFKOQ8Ldr6i79GW9Ygo-pzjJe2vZOYk1/exec";
 // Mode invité : le lien porte un code de partage (…/radar/?p=CODE).
 const INVITE = (new URLSearchParams(location.search).get("p") || "").replace(/[^A-Za-z0-9]/g, "");
 
