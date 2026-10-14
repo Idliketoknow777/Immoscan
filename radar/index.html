@@ -15,7 +15,11 @@
   le MRB et les écarts sont refaits sur le prix courant (fonction vue). Tout le reste vient du Cruncher et
   d'assembler.py.
   État des annonces (bloc « marche ») : statut « retiree » = fiche archivée ; « promesse_conditionnelle » =
-  étiquette (à produire par la collecte) ; variation_prix = baisse ou hausse en dollars.
+  étiquette (Centris ne l'affiche pas au public : relevé du 13 oct. 2026 sur 800 annonces) ; variation_prix =
+  baisse ou hausse en dollars.
+  Pastille « Dernier run » (bêta 0.22) : dernier passage de la collecte, lu dans journal_runs.json (bloc
+  « collecte », écrit par le script Google). Verte = réussi ; rouge = échec ; jaune = plus de 3 h sans passage,
+  heures de nuit (23 h à 6 h, Montréal) non comptées. Sans bloc « collecte » : dernière analyse, comme avant.
   Contrat de données : CHANTIER_Portail_Premiere_Carte.md §5.
 -->
 <style>
@@ -28,7 +32,8 @@ h1{font-size:19px;margin:0}.sub{color:var(--mute);font-size:13px}
 /* Numéro de version : augmenter à CHAQUE publication de cette page (bêta 0.21, 0.22, 0.23… : un centième à la fois, il y aura beaucoup d'itérations). */
 .ver{font-size:11px;font-weight:600;color:var(--mute);border:1px solid var(--line);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:3px;letter-spacing:.02em}
 .etat{font-size:13px;padding:4px 10px;border-radius:99px;background:var(--bg);color:var(--mute);border:0;font-family:inherit;cursor:pointer}
-.etat.ok{background:var(--posbg);color:var(--pos)}.etat.ko{background:var(--negbg);color:var(--neg)}
+.etat.ok{background:var(--posbg);color:var(--pos)}.etat.ko{background:var(--negbg);color:var(--neg)}.etat.av{background:var(--warnbg);color:var(--warn)}
+#journal h3{font-size:14px;margin:4px 0 6px}#journal .passage{font-size:13px;padding:3px 0;border-bottom:1px solid var(--line)}#journal .passage.ko{color:var(--neg)}
 .barre{display:flex;gap:8px;flex-wrap:wrap;max-width:1200px;margin:10px auto 0}
 .barre select{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);flex:1 1 0;min-width:0;max-width:340px;text-overflow:ellipsis}
 .etat .ct{display:none}
@@ -131,7 +136,7 @@ dialog.pp::backdrop{background:rgba(20,25,35,.45)}
 <body>
 <header>
  <div class="top">
-  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.21</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.22</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
   <button class="etat" id="etat" type="button" hidden></button>
  </div>
  <div class="barre" id="barre" hidden>
@@ -369,9 +374,11 @@ function afficher() {
   // Secteurs (liste déroulante)
   construireSecteurs(ims);
 
-  // État du dernier run
+  // État du dernier run : le dernier passage de la collecte (bêta 0.22) ; à défaut, la dernière analyse.
   const et = $("etat"); et.hidden = !journal;
-  if (journal && journal.runs && journal.runs.length) {
+  if (journal && journal.collecte && journal.collecte.date) {
+    majPastille();
+  } else if (journal && journal.runs && journal.runs.length) {
     const dernier = journal.runs[0];
     et.className = "etat " + (dernier.probleme ? "ko" : "ok");
     et.title = "Ouvrir le journal des runs";
@@ -1078,12 +1085,47 @@ async function envoyerPartage() {
   dire((cr ? "Image et copie du Cruncher téléchargées" : "Image téléchargée") + (copie ? " · lien Centris copié." : "."));
 }
 
+// ---- Pastille « Dernier run » = dernier passage de la collecte (bêta 0.22, étape 8 du plan)
+const SEUIL_JAUNE_MIN = 180;                 // plus de 3 h de jour sans passage = jaune
+const JOUR_DEBUT = 6, JOUR_FIN = 23;         // plage de jour de la collecte (feuille Radar_Reglages), heure de Montréal
+const heureMtl = (d) => Number(d.toLocaleString("en-CA", {timeZone: "America/Toronto", hour: "numeric", hourCycle: "h23"}));
+// Minutes écoulées entre deux instants, sans compter la nuit (la collecte dort volontairement).
+function minutesDeJour(debut, fin) {
+  let n = 0;
+  for (let t = debut.getTime(); t < fin.getTime() && n <= 24 * 60; t += 5 * 60000) {
+    const h = heureMtl(new Date(t)); if (h >= JOUR_DEBUT && h < JOUR_FIN) n += 5;
+  }
+  return n;
+}
+const depuis = (min) => min < 1 ? "à l'instant" : min < 60 ? "il y a " + Math.round(min) + " min"
+  : min < 48 * 60 ? "il y a " + Math.floor(min / 60) + " h" + (min % 60 >= 5 && min < 600 ? " " + String(Math.round(min % 60)).padStart(2, "0") : "")
+  : "il y a " + Math.round(min / 1440) + " jours";
+function majPastille() {
+  const c = journal && journal.collecte, et = $("etat");
+  if (!c || !c.date || !et) return;
+  const d = new Date(c.date), maintenant = new Date();
+  if (isNaN(d)) return;
+  const echec = c.conclusion !== "success";
+  const jaune = !echec && minutesDeJour(d, maintenant) > SEUIL_JAUNE_MIN;
+  const heure = d.toLocaleTimeString("fr-CA", {hour: "2-digit", minute: "2-digit"});
+  et.className = "etat " + (echec ? "ko" : jaune ? "av" : "ok");
+  et.title = (echec ? "Le dernier passage de la collecte a échoué (" + (c.conclusion || "?") + ")"
+    : jaune ? "Aucun passage de la collecte depuis plus de 3 h de jour : quelque chose bloque peut-être"
+    : "Dernier passage de la collecte réussi") + " — " + dateHeure(c.date) + ". Toucher pour ouvrir le journal.";
+  et.innerHTML = "● " + (echec ? "Collecte en échec · " + esc(heure) : "Collecte · " + depuis((maintenant - d) / 60000));
+}
+setInterval(majPastille, 60000);             // l'âge affiché avance tout seul
+
 function afficherJournal() {
-  const runs = (journal && journal.runs) || [];
-  $("journal").innerHTML = runs.length ? runs.slice(0, 20).map((r) =>
+  const runs = (journal && journal.runs) || [], passages = (journal && journal.passages) || [];
+  const lien = (u) => u && /^https:\/\/github\.com\//.test(u) ? ` · <a href="${esc(u)}" target="_blank" rel="noopener">GitHub</a>` : "";
+  const blocPassages = passages.length ? "<h3>Passages de la collecte</h3>" + passages.slice(0, 10).map((p) =>
+    `<div class="passage${p.conclusion !== "success" ? " ko" : ""}">${dateHeure(p.date)} · ${p.conclusion === "success" ? "réussi" : "⚠ échec"} · passage ${esc(p.run)}${lien(p.lien)}</div>`).join("")
+    + "<h3 style=\"margin-top:14px\">Analyses d'immeubles</h3>" : "";
+  $("journal").innerHTML = blocPassages + (runs.length ? runs.slice(0, 20).map((r) =>
     `<div class="run"><b>Run ${esc(r.run)}</b> · ${dateHeure(r.date)} · ${r.probleme ? "⚠ problème" : esc(r.conclusion || "")}
      ${r.lien && /^https:\/\/github\.com\//.test(r.lien) ? ` · <a href="${esc(r.lien)}" target="_blank" rel="noopener">GitHub</a>` : ""}
-     <pre>${esc((r.rapport || []).join("\n"))}</pre></div>`).join("") : "Aucun run inscrit au journal.";
+     <pre>${esc((r.rapport || []).join("\n"))}</pre></div>`).join("") : "Aucun run inscrit au journal.");
 }
 
 // ---------------------------------------------------------------- événements
