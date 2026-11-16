@@ -27,6 +27,10 @@
   Partage par lien (bêta 0.24, CHANTIER_Partage.md) : « Partager » inscrit une ligne dans l'onglet « Partages » de
   Radar_Saisies et envoie UN lien …/radar/?p=CODE. Avec ce code, la page passe en MODE INVITÉ : sans connexion Google,
   elle demande les fiches au script Google « Radar_Partage » (URL_SCRIPT_PARTAGE), en lecture seule.
+  Annonces nouvelles (bêta 0.26, décision de François du 15 nov. 2026) : une annonce reste « nouvelle » tant que
+  François n'a pas appuyé sur « Vu » (ou choisi un autre statut), peu importe le nombre de jours. Avant : seulement
+  le jour de l'analyse. Le statut vit dans Radar_Saisies (colonne etape_entonnoir), donc sur tous ses appareils.
+  Sous le filtre « nouvelles » : bouton « Tout marquer comme vu » (deux touchers, une seule écriture groupée).
   Contrat de données : CHANTIER_Portail_Premiere_Carte.md §5.
 -->
 <style>
@@ -57,6 +61,10 @@ main{max-width:1200px;margin:16px auto;padding:0 16px;display:grid;grid-template
 /* Statut de l'immeuble dans l'entonnoir : une liste déroulante en forme de pastille. */
 .etape{flex:0 1 auto;min-width:0;font:inherit;font-size:12px;font-weight:650;height:30px;padding:0 8px;border-radius:99px;border:1px solid #c3c8d1;background:#fff;color:var(--ink);cursor:pointer;text-overflow:ellipsis}
 .etape.neuf{border-color:var(--acc);background:#eef2fc;color:var(--acc)}.etape.ecarte{color:var(--mute);background:var(--bg)}.etape:disabled{opacity:.55;cursor:default}
+/* Bouton « Vu » de la fiche et bande « Tout marquer comme vu » (bêta 0.26). */
+.haut .tag{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}.haut .droite{display:flex;gap:6px;align-items:center;flex:0 0 auto}
+.btn.vu{min-height:30px;padding:0 10px;font-size:12px;font-weight:650;border-radius:99px;white-space:nowrap}
+.bande-vu{max-width:1200px;margin:10px auto 0;padding:0 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--mute)}
 .etiq{display:flex;gap:6px;flex-wrap:wrap}.etiq span{font-size:12px;font-weight:650;padding:3px 9px;border-radius:99px;background:var(--warnbg);color:#7a4f00}
 /* Fiche archivée (annonce retirée de Centris) : contour jaune sur toute la fiche. */
 .carte.arch{border:3px solid #e0a100;background:#fffdf7}
@@ -163,7 +171,7 @@ h1 .inv{font-size:11px;font-weight:600;color:var(--acc);margin-left:4px;vertical
 <body>
 <header>
  <div class="top">
-  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.25</span><span class="inv" hidden>(invité)</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.26</span><span class="inv" hidden>(invité)</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
   <button class="etat" id="etat" type="button" hidden></button>
  </div>
  <div class="barre" id="barre" hidden>
@@ -185,6 +193,7 @@ h1 .inv{font-size:11px;font-weight:600;color:var(--acc);margin-left:4px;vertical
 <section class="panneau" id="panneau-journal" hidden><div class="boite" id="journal"></div></section>
 <section class="kpis" id="kpis" hidden></section>
 <section class="bande-notes" id="bande-notes" hidden><div><span id="bande-notes-txt"></span><button class="btn" id="btn-notes" type="button" hidden></button></div></section>
+<section class="bande-vu" id="bande-vu" hidden><span id="bande-vu-txt"></span><button class="btn" id="btn-tout-vu" type="button"></button></section>
 
 <main id="grille">
  <div class="accueil" id="accueil">
@@ -457,9 +466,15 @@ const CLE_SECTEURS = "radar_secteurs";
 let filtre = "actives", triAvantArchives = null;
 let secteursChoisis = new Set();
 if (!INVITE) { try { secteursChoisis = new Set(JSON.parse(localStorage.getItem(CLE_SECTEURS) || "[]")); } catch (e) {} }
+// « Nouvelle » (bêta 0.26, décision de François du 15 nov. 2026) : une annonce reste nouvelle tant qu'il n'a pas
+// appuyé sur « Vu » (ou choisi un autre statut), peu importe le nombre de jours. En mode invité, ou tant que les
+// statuts ne sont pas lus dans Radar_Saisies : l'ancienne règle (analysée aujourd'hui).
+const statutDe = (id) => { const s = saisies[id]; return s && s.etape && s.etape !== ETAPES[0] ? s.etape : ""; };
+const estNouvelle = (i) => (!INVITE && notesEtat === "pret") ? !statutDe(String(i.id || "")) : i.date_analyse === aujourdhui();
+const cssEsc = (s) => (window.CSS && CSS.escape ? CSS.escape(s) : s);
 const FILTRES = [
   ["actives", "actives", "active", (i, w) => !w.retiree],
-  ["nouvelles", "nouvelles", "nouvelle", (i, w) => !w.retiree && i.date_analyse === aujourdhui()],
+  ["nouvelles", "nouvelles", "nouvelle", (i, w) => !w.retiree && estNouvelle(i)],
   ["baisses", "baisses", "baisse", (i, w) => !w.retiree && w.variation < 0],
   ["archives", "archivées", "archivée", (i, w) => w.retiree],
 ];
@@ -509,17 +524,37 @@ function trier(ims) {
   return [...ims].sort(cles[t] || cles.ecartC);
 }
 
-function afficherCartes() {
+// Pastilles : le compte de chaque filtre, pour les secteurs cochés.
+function majPuces() {
   const duCoin = (donnees.immeubles || []).filter(duSecteur).map((i) => [i, vue(i)]);
-  // Pastilles : le compte de chaque filtre, pour les secteurs cochés.
   $("kpis").innerHTML = FILTRES.map(([cle, pluriel, singulier, test]) => {
     const n = duCoin.filter(([i, w]) => test(i, w)).length;
     return `<button class="puce${cle === filtre ? " on" : ""}${cle === "baisses" && n ? " v" : ""}" type="button" data-filtre="${cle}" aria-pressed="${cle === filtre}"><b>${n}</b>${n > 1 ? pluriel : singulier}</button>`;
   }).join("");
+  return duCoin;
+}
+function majSousTitre(n) {
+  const libTri = $("tri").selectedOptions[0].textContent.replace(/^Trier : /, "");
+  $("sous-titre").textContent = (INVITE ? "Partagé par François · " : "") + n + " immeuble" + (n > 1 ? "s" : "") + " · trié par " + libTri;
+}
+// Bande « Tout marquer comme vu » : seulement sous le filtre « nouvelles », quand les statuts sont lus.
+let lotVuArme = false, lotVuMinut = null;
+function majBandeVu(n) {
+  const voir = !INVITE && filtre === "nouvelles" && notesEtat === "pret" && n > 0;
+  lotVuArme = false; clearTimeout(lotVuMinut);
+  $("bande-vu").hidden = !voir;
+  if (voir) {
+    $("bande-vu-txt").textContent = "Une annonce reste ici tant que tu n'as pas appuyé sur « Vu ».";
+    $("btn-tout-vu").textContent = "Tout marquer comme vu (" + n + ")";
+  }
+}
+
+function afficherCartes() {
+  const duCoin = majPuces();
   const test = (FILTRES.find((f) => f[0] === filtre) || FILTRES[0])[3];
   const ims = duCoin.filter(([i, w]) => test(i, w)).map(([i]) => i);
-  const libTri = $("tri").selectedOptions[0].textContent.replace(/^Trier : /, "");
-  $("sous-titre").textContent = (INVITE ? "Partagé par François · " : "") + ims.length + " immeuble" + (ims.length > 1 ? "s" : "") + " · trié par " + libTri;
+  majSousTitre(ims.length);
+  majBandeVu(ims.length);
   const grille = $("grille");
   grille.querySelectorAll(".carte").forEach((c) => c.remove());
   if (!ims.length) { message("Aucun immeuble pour ce filtre."); return; }
@@ -572,7 +607,7 @@ function carte(im) {
   const lienCr = cr.drive_id ? `https://drive.google.com/file/d/${encodeURIComponent(cr.drive_id)}/view` : null;
 
   return `<article class="carte${w.retiree ? " arch" : ""}">
-  <div class="haut"><div class="tag" title="Date de l'analyse">${tag}</div>${INVITE ? "" : blocEtape(im)}</div>
+  <div class="haut"><div class="tag" title="Date de l'analyse">${tag}</div>${INVITE ? "" : `<div class="droite">${blocVu(im)}${blocEtape(im)}</div>`}</div>
   ${etiq.length ? `<div class="etiq">${etiq.map((e) => `<span>${esc(e)}</span>`).join("")}</div>` : ""}
   <div><p class="adr">${esc(courte)}</p><div class="meta">${esc(im.secteur || "Secteur inconnu")} · ${estNb(im.nb_logements) ? im.nb_logements + " portes" : "portes ?"}${typo(im.typologie)}</div></div>
   <div class="prix">
@@ -685,7 +720,8 @@ const versSaisies = (lignes) => {
 };
 
 async function chargerNotes() {
-  if (!droitEcriture) { notesEtat = "sans-droit"; majNotes(); return; }
+  const avant = notesEtat;
+  if (!droitEcriture) { notesEtat = "sans-droit"; majNotes(); apresLectureStatuts(avant); return; }
   try {
     if (!feuilleId) feuilleId = await trouverFeuille();
     const lues = feuilleId ? versSaisies(await lireFeuille()) : {};
@@ -709,6 +745,13 @@ async function chargerNotes() {
     notesEtat = apiFermee(e) ? "api-fermee" : "erreur";
   }
   majNotes();
+  apresLectureStatuts(avant);
+}
+// Les statuts viennent d'être lus : les pastilles se recomptent. Sous le filtre « nouvelles », la liste est
+// refaite seulement si l'état de lecture a changé (jamais pendant une frappe).
+function apresLectureStatuts(avant) {
+  if (!donnees || INVITE) return;
+  if (filtre === "nouvelles" && avant !== notesEtat && !enFrappe()) afficherCartes(); else majPuces();
 }
 
 function planifierNote(id, delai) {
@@ -774,8 +817,13 @@ function blocEtape(im) {
   return `<select class="etape neuf" data-etape="${esc(id)}" aria-label="Statut de l'immeuble" disabled>`
     + ETAPES.map((e, i) => `<option value="${i ? esc(e) : ""}">${esc(e)}</option>`).join("") + "</select>";
 }
+function blocVu(im) {
+  const id = String(im.id || ""); if (!id) return "";
+  return `<button class="btn vu" type="button" data-vu="${esc(id)}" title="Marquer cette annonce comme vue" hidden>✓ Vu</button>`;
+}
 function majEtapes() {
   const pret = notesEtat === "pret";
+  document.querySelectorAll("button[data-vu]").forEach((b) => { b.hidden = !pret || !!statutDe(b.dataset.vu); });
   document.querySelectorAll("select[data-etape]").forEach((sel) => {
     const s = saisies[sel.dataset.etape], v = s && s.etape && s.etape !== ETAPES[0] ? s.etape : "";
     if (v && ![...sel.options].some((o) => o.value === v)) sel.add(new Option(v, v));
@@ -789,6 +837,58 @@ function choisirEtape(id, v) {
   const s = saisies[id] || (saisies[id] = {note: "", modifie: "", etape: ""});
   s.etape = v; etapeSale[id] = true; majEtapes();
   fileNotes = fileNotes.then(() => ecrireEtape(id)).catch(() => {});
+  apresStatut(id);
+}
+// Après un changement de statut : les pastilles se recomptent. Sous le filtre « nouvelles », la fiche qui vient
+// d'être vue quitte la liste, sans tout réafficher (une note en cours de frappe ailleurs n'est pas dérangée).
+function apresStatut(id) {
+  if (!donnees) return;
+  majPuces();
+  if (filtre !== "nouvelles") return;
+  if (statutDe(id)) { const b = document.querySelector('button[data-vu="' + cssEsc(id) + '"]'), c = b && b.closest(".carte"); if (c) c.remove(); }
+  const n = $("grille").querySelectorAll(".carte").length;
+  majSousTitre(n); majBandeVu(n);
+  if (!n) message("Aucun immeuble pour ce filtre.");
+}
+// « Tout marquer comme vu » : les fiches affichées sous le filtre « nouvelles » (secteurs cochés). Deux touchers :
+// le premier demande confirmation, et s'annule seul après quelques secondes.
+function toutMarquerVu() {
+  if (notesEtat !== "pret" || filtre !== "nouvelles") return;
+  const ids = [...$("grille").querySelectorAll("button[data-vu]")].map((b) => b.dataset.vu).filter((id) => id && !statutDe(id));
+  if (!ids.length) return;
+  if (!lotVuArme) {
+    lotVuArme = true;
+    $("btn-tout-vu").textContent = "Confirmer : " + ids.length + (ids.length > 1 ? " fiches vues" : " fiche vue");
+    lotVuMinut = setTimeout(() => majBandeVu($("grille").querySelectorAll(".carte").length), 6000);
+    return;
+  }
+  ids.forEach((id) => { const s = saisies[id] || (saisies[id] = {note: "", modifie: "", etape: ""}); s.etape = ETAPES[1]; etapeSale[id] = true; });
+  fileNotes = fileNotes.then(() => ecrireEtapesLot(ids)).catch(() => {});
+  afficherCartes();
+}
+// Une seule écriture groupée. La feuille est relue juste avant : un nouvel essai ne crée jamais de doublon.
+async function ecrireEtapesLot(ids) {
+  const reste = ids.filter((id) => etapeSale[id] && saisies[id]);
+  if (!reste.length || notesEtat !== "pret") return;
+  const voulu = {}; reste.forEach((id) => { voulu[id] = saisies[id].etape; });
+  try {
+    await assurerFeuille();
+    const lignes = await lireFeuille();
+    const rang = {}; lignes.forEach((l, i) => { const id = String(l[0] || ""); if (id && !(id in rang)) rang[id] = i + 1; });
+    const maj = [], ajout = [];
+    reste.forEach((id) => {
+      if (rang[id]) maj.push({range: "E" + rang[id], values: [[voulu[id]]]});
+      else { const im = (donnees.immeubles || []).find((x) => x.id === id) || {}; ajout.push([id, String(im.adresse || ""), "", "", voulu[id]]); }
+    });
+    if (maj.length) await appelGoogle(SHEETS + feuilleId + "/values:batchUpdate", {method: "POST", body: {valueInputOption: "RAW", data: maj}});
+    if (ajout.length) await appelGoogle(SHEETS + feuilleId + "/values/A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS", {method: "POST", body: {values: ajout}});
+    // Un statut a pu être rechangé pendant l'écriture : celui-là repart seul pour un tour.
+    reste.forEach((id) => { if (saisies[id] && saisies[id].etape !== voulu[id]) fileNotes = fileNotes.then(() => ecrireEtape(id)).catch(() => {}); else delete etapeSale[id]; });
+  } catch (e) {
+    if (e.status === 404) feuilleId = null;
+    if (apiFermee(e)) { notesEtat = "api-fermee"; majNotes(); }
+    setTimeout(() => { fileNotes = fileNotes.then(() => ecrireEtapesLot(reste)).catch(() => {}); }, 15000);
+  }
 }
 async function ecrireEtape(id) {
   if (!etapeSale[id] || notesEtat !== "pret") return;
@@ -1139,6 +1239,8 @@ $("liste-secteur").addEventListener("click", (e) => { if (e.target.id === "ferme
 document.addEventListener("click", (e) => { if (!$("liste-secteur").hidden && !e.target.closest("#secteur")) ouvrirSecteurs(false); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("liste-secteur").hidden) { ouvrirSecteurs(false); $("btn-secteur").focus(); } });
 $("grille").addEventListener("change", (e) => { const s = e.target; if (s.dataset && s.dataset.etape !== undefined && s.matches("select")) choisirEtape(s.dataset.etape, s.value); });
+$("grille").addEventListener("click", (e) => { const b = e.target.closest && e.target.closest("button[data-vu]"); if (b && notesEtat === "pret") choisirEtape(b.dataset.vu, ETAPES[1]); });
+$("btn-tout-vu").addEventListener("click", toutMarquerVu);
 // Partager (en-tête) : une sélection, toutes les fiches affichées cochées. Tant que le script n'est pas publié :
 // l'ancien comportement (aperçu figé).
 $("btn-partager").addEventListener("click", async () => {
