@@ -190,7 +190,7 @@ h1 .inv{font-size:11px;font-weight:600;color:var(--acc);margin-left:4px;vertical
 <body>
 <header>
  <div class="top">
-  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.27</span><span class="inv" hidden>(invité)</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
+  <div><h1>Radar immobilier<span class="lg"> — Portail</span><span class="ver" title="Version de cette page">bêta 0.28</span><span class="inv" hidden>(invité)</span></h1><div class="sub" id="sous-titre">Connexion requise</div></div>
   <button class="etat" id="etat" type="button" hidden></button>
  </div>
  <div class="barre" id="barre" hidden>
@@ -1204,7 +1204,8 @@ function htmlSante() {
   const s = maillonsAffiches();
   if (!s) return "";
   const pire = s.maillons.reduce((a, x) => ({rouge: 3, orange: 2, pause: 1}[x.etat] || 0) > ({rouge: 3, orange: 2, pause: 1}[a] || 0) ? x.etat : a, "ok");
-  const resumeTete = pire === "ok" ? "Toute la chaîne fonctionne" : pire === "rouge" ? "Un maillon est bloqué : il faut agir" : pire === "orange" ? "Ratés passagers, rien à faire pour l'instant" : "Collecte en pause";
+  const nInconnus = s.maillons.filter((x) => x.etat === "inconnu").length;
+  const resumeTete = pire === "ok" && nInconnus ? nInconnus + " maillon(s) sans nouvelles pour l'instant (ils se remplissent au fil des passages)" : pire === "ok" ? "Toute la chaîne fonctionne" : pire === "rouge" ? "Un maillon est bloqué : il faut agir" : pire === "orange" ? "Ratés passagers, rien à faire pour l'instant" : "Collecte en pause";
   const cases = s.maillons.map((m, i) => `<div class="m ${esc(m.etat)}" title="${esc(m.resume || "")}">${i + 1}. ${esc(m.nom)}<small>${esc(MOTS_SANTE[m.etat] || "")}</small></div>`).join("");
   const lien = (u) => u && /^https:\/\//.test(u) ? ` · <a href="${esc(u)}" target="_blank" rel="noopener">voir à la source</a>` : "";
   const detail = s.maillons.map((m, i) => {
